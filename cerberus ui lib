@@ -2921,6 +2921,19 @@ function elementHandler:Keybind(keybindName: string, callback, defaultKey: strin
 				return keycode
 			end
 		end
+		for i, mouseInput in pairs(Enum.UserInputType:GetEnumItems()) do
+			if mouseInput.Name:lower() == name:lower() then
+				return mouseInput
+			end
+		end
+	end
+	
+	local function getInputName(input)
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			return input.KeyCode.Name
+		else
+			return input.UserInputType.Name
+		end
 	end
 	
 	local function onKeybindClick()
@@ -2932,7 +2945,10 @@ function elementHandler:Keybind(keybindName: string, callback, defaultKey: strin
 		repeat
 			local gameProcessedEvent
 			input, gameProcessedEvent = UserInputService.InputBegan:Wait()
-			if input.KeyCode.Name ~= "Unknown" then
+			if input.KeyCode.Name ~= "Unknown" or 
+			   input.UserInputType == Enum.UserInputType.MouseButton1 or 
+			   input.UserInputType == Enum.UserInputType.MouseButton2 or 
+			   input.UserInputType == Enum.UserInputType.MouseButton3 then
 				recognizedKey = true
 			end
 		until recognizedKey
@@ -2942,10 +2958,12 @@ function elementHandler:Keybind(keybindName: string, callback, defaultKey: strin
 			coroutine.close(textAnimation)	
 		end
 		
+		local inputName = getInputName(input)
+		
 		textAnimation = coroutine.create(function()
-			animateText(keybindInstance.BoxBackground.InnerBox.KeyText, textAnimationSpeed, input.KeyCode.Name)
+			animateText(keybindInstance.BoxBackground.InnerBox.KeyText, textAnimationSpeed, inputName)
 			
-			textParams.Text = input.KeyCode.Name
+			textParams.Text = inputName
 			local requiredNewTextSpace = TextService:GetTextBoundsAsync(textParams)
 			local closeTween = TweenService:Create(keybindInstance.BoxBackground, TweenInfo.new(.25, Enum.EasingStyle.Linear), {Size = UDim2.new(0,math.max(originialOffsetSize.X, requiredNewTextSpace.X + keybindInstance.BoxBackground.BoxPadding.PaddingLeft.Offset + keybindInstance.BoxBackground.BoxPadding.PaddingRight.Offset + keybindInstance.BoxBackground.InnerBox.BoxPadding.PaddingLeft.Offset + keybindInstance.BoxBackground.InnerBox.BoxPadding.PaddingRight.Offset + sideClosedTextPaddingPixels),1,0)})
 			closeTween:Play()
@@ -2955,7 +2973,7 @@ function elementHandler:Keybind(keybindName: string, callback, defaultKey: strin
 		coroutine.resume(textAnimation)
 
 		repeat task.wait() until not inputBeingProcessed
-		defaultKey = input.KeyCode
+		defaultKey = (input.UserInputType == Enum.UserInputType.Keyboard) and input.KeyCode or input.UserInputType
 	end
 	
 	local function onInputBegan(input, gameProcessedEvent)
@@ -2963,6 +2981,10 @@ function elementHandler:Keybind(keybindName: string, callback, defaultKey: strin
 		if gameProcessedEvent then return end
 		if input.UserInputType == Enum.UserInputType.Keyboard then
 			if input.KeyCode == defaultKey then
+				callback()
+			end
+		else
+			if input.UserInputType == defaultKey then
 				callback()
 			end
 		end
