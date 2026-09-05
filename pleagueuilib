@@ -1653,8 +1653,8 @@ function library:AddWindow(text)
 		end
 		function inside:AddToggle(Text,Enabled,keybind,Callback)
 			Callback = Callback or function() end
-			Text=Text or 'Not Defined'
-			local activated = Enabled or false;
+			Text = Text or 'Not Defined'
+			local activated = (Enabled == true)
 			local y = {};
 
 			local TemplateToggle = Instance.new("Frame")
@@ -1664,7 +1664,7 @@ function library:AddWindow(text)
 			local UIGradient = Instance.new("UIGradient");
 			local UIStroke = Instance.new('UIStroke');
 
-			UIStroke.Parent= color;
+			UIStroke.Parent = color;
 			UIStroke.Color = Color3.fromRGB(52,52,52);
 			UIStroke.LineJoinMode = Enum.LineJoinMode.Round;
 			UIStroke.Thickness = 1;
@@ -1674,26 +1674,26 @@ function library:AddWindow(text)
 			UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(180, 180, 180))}
 			UIGradient.Parent = UIStroke
 
-			local function Update()
-				if activated == false then
-					TweenService:Create(color , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(84, 122, 181)}):Play()
-					TweenService:Create(TextLabel, tweenInfo, { TextColor3 = Color3.fromRGB(152, 152, 152) }):Play()
-					spawn(function()
-						pcall(function()
-							Callback(activated)
-						end)
-					end)
-					activated = true
-				elseif activated == true then
-					TweenService:Create(color , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(25,25,25)}):Play()
-					TweenService:Create(TextLabel, tweenInfo, { TextColor3 = Color3.fromRGB(84, 84, 84) }):Play()
-					spawn(function()
-						pcall(function()
-							Callback(activated)
-						end)
-					end)
-					activated = false
+			local function SetState(state, doCallback)
+				activated = state
+				if activated then
+					TweenService:Create(color, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(84, 122, 181)}):Play()
+					TweenService:Create(TextLabel, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(152, 152, 152)}):Play()
+				else
+					TweenService:Create(color, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(25, 25, 25)}):Play()
+					TweenService:Create(TextLabel, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(84, 84, 84)}):Play()
 				end
+				if doCallback then
+					spawn(function()
+						pcall(function()
+							Callback(activated)
+						end)
+					end)
+				end
+			end
+
+			local function Toggle()
+				SetState(not activated, true)
 			end
 
 			TemplateToggle.Name = "TemplateToggle"
@@ -1714,7 +1714,7 @@ function library:AddWindow(text)
 			TextLabel.ZIndex = 15
 			TextLabel.Font = Enum.Font.SourceSansBold
 			TextLabel.Text = Text
-			TextLabel.TextColor3 = Color3.fromRGB(84, 84, 84)
+			TextLabel.TextColor3 = activated and Color3.fromRGB(152, 152, 152) or Color3.fromRGB(84, 84, 84)
 			TextLabel.TextSize = 14.000
 			TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1734,7 +1734,7 @@ function library:AddWindow(text)
 			color.Name = "color"
 			color.Parent = TemplateToggle
 			color.AnchorPoint = Vector2.new(0.5, 0.5)
-			color.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+			color.BackgroundColor3 = activated and Color3.fromRGB(84, 122, 181) or Color3.fromRGB(25, 25, 25)
 			color.BorderSizePixel = 0
 			color.Position = UDim2.new(0.0192536544, 0, 0.386994779, 0)
 			color.Size = UDim2.new(0, 15, 0, 15)
@@ -1742,7 +1742,6 @@ function library:AddWindow(text)
 
 			local KeyButton = Instance.new("TextButton")
 			local h5 = Instance.new("UICorner")
-
 
 			KeyButton.Name = "KeyButton"
 			KeyButton.Parent = TemplateToggle
@@ -1776,7 +1775,7 @@ function library:AddWindow(text)
 					if not gp then 
 						if (a.KeyCode.Name == KeyCode or a.KeyCode.Name == KeyCode.Name) and ischanging == false then 
 							pcall(function()
-								Update()
+								Toggle()
 							end)
 						end
 					end
@@ -1809,34 +1808,39 @@ function library:AddWindow(text)
 			wait()
 			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
 			UpdateMainSize(nil,true)
-			function y:UpdateValue(val)
-				activated = val
-				Update(a)
-			end
-			Update(a)
 
-			Interactive.MouseButton1Click:Connect(Update)
+			function y:Set(val)
+				if activated ~= val then
+					SetState(val, true)
+				end
+			end
+			function y:UpdateValue(val)
+				if activated ~= val then
+					SetState(val, true)
+				end
+			end
+
+			if activated then
+				spawn(function()
+					pcall(function()
+						Callback(true)
+					end)
+				end)
+			end
+
+			Interactive.MouseButton1Click:Connect(Toggle)
 			Interactive.MouseEnter:Connect(function()
 				TweenService:Create(UIStroke , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Color = Color3.fromRGB(115, 115, 115)}):Play()
 			end)
 			Interactive.MouseLeave:Connect(function()
 				TweenService:Create(UIStroke , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Color = Color3.fromRGB(52, 52, 52)}):Play()
-
 			end)
 			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
 			wait()
 			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
 			UpdateMainSize(nil,true)
-			
-			-- BAŞLANGIÇTA ENABLED TRUE İSE UPDATE ÇAĞIR
-			if Enabled == true then
-				task.defer(function()
-					Update()
-				end)
-			end
-			
-			return y
 
+			return y
 		end
 		function inside:AddSeparateBar()
 			local obj1 = Instance.new("Frame")
