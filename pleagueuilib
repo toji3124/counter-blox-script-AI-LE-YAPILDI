@@ -928,8 +928,8 @@ local function getNotifyHolder()
 		NotifyHolder = Instance.new("Frame")
 		NotifyHolder.Name = "NotifyHolder"
 		NotifyHolder.Parent = PCR_1
-		NotifyHolder.AnchorPoint = Vector2.new(1, 1)
-		NotifyHolder.Position = UDim2.new(1, -20, 1, -20)
+		NotifyHolder.AnchorPoint = Vector2.new(0, 0)
+		NotifyHolder.Position = UDim2.new(0, 20, 0, 20)
 		NotifyHolder.Size = UDim2.new(0, 260, 1, -40)
 		NotifyHolder.BackgroundTransparency = 1
 		NotifyHolder.BorderSizePixel = 0
@@ -940,8 +940,8 @@ local function getNotifyHolder()
 		NotifyLayout.Name = "NotifyLayout"
 		NotifyLayout.Parent = NotifyHolder
 		NotifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-		NotifyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+		NotifyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 		NotifyLayout.Padding = UDim.new(0, 8)
 	end
 	return NotifyHolder
@@ -982,7 +982,7 @@ function library:Notify(titleOrConfig, text, duration)
 	Inner.Name = "Inner"
 	Inner.Parent = Card
 	Inner.Size = UDim2.new(1, 0, 1, 0)
-	Inner.Position = UDim2.new(1, 60, 0, 0)
+	Inner.Position = UDim2.new(-1, -60, 0, 0)
 	Inner.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	Inner.BorderSizePixel = 0
 	Inner.ClipsDescendants = true
@@ -1065,7 +1065,7 @@ function library:Notify(titleOrConfig, text, duration)
 		if closed then return end
 		closed = true
 		pcall(function()
-			TweenService:Create(Inner, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(1, 60, 0, 0) }):Play()
+			TweenService:Create(Inner, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(-1, -60, 0, 0) }):Play()
 			TweenService:Create(Card, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = UDim2.new(1, 0, 0, 0) }):Play()
 		end)
 		task.delay(0.28, function()
