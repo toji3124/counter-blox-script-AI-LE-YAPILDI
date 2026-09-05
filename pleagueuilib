@@ -918,6 +918,172 @@ function library:AddWatermark(Text)
 	return intern
 end
 
+local NotifyHolder = nil
+local function getNotifyHolder()
+	if NotifyHolder and NotifyHolder.Parent then
+		return NotifyHolder
+	end
+	NotifyHolder = PCR_1:FindFirstChild("NotifyHolder")
+	if not NotifyHolder then
+		NotifyHolder = Instance.new("Frame")
+		NotifyHolder.Name = "NotifyHolder"
+		NotifyHolder.Parent = PCR_1
+		NotifyHolder.AnchorPoint = Vector2.new(1, 1)
+		NotifyHolder.Position = UDim2.new(1, -20, 1, -20)
+		NotifyHolder.Size = UDim2.new(0, 260, 1, -40)
+		NotifyHolder.BackgroundTransparency = 1
+		NotifyHolder.BorderSizePixel = 0
+		NotifyHolder.ZIndex = 100
+		NotifyHolder.ClipsDescendants = false
+
+		local NotifyLayout = Instance.new("UIListLayout")
+		NotifyLayout.Name = "NotifyLayout"
+		NotifyLayout.Parent = NotifyHolder
+		NotifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		NotifyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		NotifyLayout.Padding = UDim.new(0, 8)
+	end
+	return NotifyHolder
+end
+
+function library:Notify(titleOrConfig, text, duration)
+	local title = "Notification"
+	local desc = ""
+	local dur = 2.5
+
+	if type(titleOrConfig) == "table" then
+		title = titleOrConfig.Title or titleOrConfig.title or "Notification"
+		desc = titleOrConfig.Text or titleOrConfig.text or titleOrConfig.Message or titleOrConfig.desc or ""
+		dur = tonumber(titleOrConfig.Duration or titleOrConfig.duration or titleOrConfig.Time) or 2.5
+	elseif text ~= nil then
+		title = tostring(titleOrConfig or "Notification")
+		desc = tostring(text or "")
+		dur = tonumber(duration) or 2.5
+	else
+		title = "Notification"
+		desc = tostring(titleOrConfig or "")
+		dur = tonumber(duration) or 2.5
+	end
+
+	local holder = getNotifyHolder()
+	if not holder then return end
+
+	local Card = Instance.new("Frame")
+	Card.Name = "NotifyCard"
+	Card.Parent = holder
+	Card.Size = UDim2.new(1, 0, 0, 52)
+	Card.BackgroundTransparency = 1
+	Card.BorderSizePixel = 0
+	Card.ClipsDescendants = false
+	Card.ZIndex = 100
+
+	local Inner = Instance.new("Frame")
+	Inner.Name = "Inner"
+	Inner.Parent = Card
+	Inner.Size = UDim2.new(1, 0, 1, 0)
+	Inner.Position = UDim2.new(1, 60, 0, 0)
+	Inner.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	Inner.BorderSizePixel = 0
+	Inner.ClipsDescendants = true
+	Inner.ZIndex = 101
+
+	local CardCorner = Instance.new("UICorner")
+	CardCorner.CornerRadius = UDim.new(0, 4)
+	CardCorner.Parent = Inner
+
+	local CardStroke = Instance.new("UIStroke")
+	CardStroke.Parent = Inner
+	CardStroke.Color = Color3.fromRGB(50, 50, 50)
+	CardStroke.Thickness = 1
+	CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+	local Accent = Instance.new("Frame")
+	Accent.Name = "Accent"
+	Accent.Parent = Inner
+	Accent.BackgroundColor3 = Color3.fromRGB(91, 133, 197)
+	Accent.BorderSizePixel = 0
+	Accent.Position = UDim2.new(0, 0, 0, 0)
+	Accent.Size = UDim2.new(0, 3, 1, 0)
+	Accent.ZIndex = 102
+
+	local TitleLabel = Instance.new("TextLabel")
+	TitleLabel.Name = "Title"
+	TitleLabel.Parent = Inner
+	TitleLabel.BackgroundTransparency = 1
+	TitleLabel.Position = UDim2.new(0, 12, 0, 6)
+	TitleLabel.Size = UDim2.new(1, -20, 0, 16)
+	TitleLabel.Font = Enum.Font.SourceSansBold
+	TitleLabel.Text = title
+	TitleLabel.TextColor3 = Color3.fromRGB(225, 225, 225)
+	TitleLabel.TextSize = 14
+	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TitleLabel.ZIndex = 102
+
+	local DescLabel = Instance.new("TextLabel")
+	DescLabel.Name = "Desc"
+	DescLabel.Parent = Inner
+	DescLabel.BackgroundTransparency = 1
+	DescLabel.Position = UDim2.new(0, 12, 0, 24)
+	DescLabel.Size = UDim2.new(1, -20, 0, 18)
+	DescLabel.Font = Enum.Font.SourceSans
+	DescLabel.Text = desc
+	DescLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
+	DescLabel.TextSize = 13
+	DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+	DescLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	DescLabel.ZIndex = 102
+
+	local BarBG = Instance.new("Frame")
+	BarBG.Name = "BarBG"
+	BarBG.Parent = Inner
+	BarBG.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	BarBG.BorderSizePixel = 0
+	BarBG.Position = UDim2.new(0, 0, 1, -2)
+	BarBG.Size = UDim2.new(1, 0, 0, 2)
+	BarBG.ZIndex = 102
+
+	local Bar = Instance.new("Frame")
+	Bar.Name = "Bar"
+	Bar.Parent = BarBG
+	Bar.BackgroundColor3 = Color3.fromRGB(91, 133, 197)
+	Bar.BorderSizePixel = 0
+	Bar.Position = UDim2.new(0, 0, 0, 0)
+	Bar.Size = UDim2.new(1, 0, 1, 0)
+	Bar.ZIndex = 103
+
+	local ClickBtn = Instance.new("TextButton")
+	ClickBtn.Name = "ClickBtn"
+	ClickBtn.Parent = Inner
+	ClickBtn.BackgroundTransparency = 1
+	ClickBtn.Size = UDim2.new(1, 0, 1, 0)
+	ClickBtn.Text = ""
+	ClickBtn.ZIndex = 105
+
+	local closed = false
+	local function closeCard()
+		if closed then return end
+		closed = true
+		pcall(function()
+			TweenService:Create(Inner, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(1, 60, 0, 0) }):Play()
+			TweenService:Create(Card, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = UDim2.new(1, 0, 0, 0) }):Play()
+		end)
+		task.delay(0.28, function()
+			pcall(function() Card:Destroy() end)
+		end)
+	end
+
+	ClickBtn.MouseButton1Click:Connect(closeCard)
+
+	pcall(function()
+		TweenService:Create(Inner, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(0, 0, 0, 0) }):Play()
+		TweenService:Create(Bar, TweenInfo.new(dur, Enum.EasingStyle.Linear, Enum.EasingDirection.In), { Size = UDim2.new(0, 0, 1, 0) }):Play()
+	end)
+
+	task.delay(dur, closeCard)
+end
+library.Notification = library.Notify
+
 function library:Init(name)
     for i,v in pairs(Upper:GetChildren()) do
         if v:IsA('TextButton') then
