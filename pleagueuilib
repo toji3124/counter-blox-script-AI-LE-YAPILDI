@@ -1531,6 +1531,295 @@ end
 -- Default KeybindList instance
 library.KeybindList = library:AddKeybindList({ Title = "Keybinds", Visible = true })
 
+--====================================================================--
+--                   HIT LOGS / EVENT LOGS MODULE                     --
+--====================================================================--
+
+local HitLogModule = {
+	Enabled = true,
+	Holder = nil,
+	MaxLogs = 7,
+	ActiveLogs = {},
+	Position = UDim2.new(0.5, 0, 0, 25),
+	AnchorPoint = Vector2.new(0.5, 0)
+}
+
+library.HitLogsEnabled = true
+
+local function getHitLogHolder()
+	if HitLogModule.Holder and HitLogModule.Holder.Parent then
+		return HitLogModule.Holder
+	end
+
+	local targetParent = PCR_1
+	if not targetParent or not targetParent.Parent then
+		pcall(function()
+			targetParent = game:GetService("CoreGui"):FindFirstChild("PCR_1")
+		end)
+	end
+	if not targetParent then
+		pcall(function()
+			targetParent = game:GetService("CoreGui")
+		end)
+	end
+
+	local holder = Instance.new("Frame")
+	holder.Name = "PCR_HitLogsHolder"
+	holder.AnchorPoint = HitLogModule.AnchorPoint
+	holder.Position = HitLogModule.Position
+	holder.Size = UDim2.new(0, 600, 0, 0)
+	holder.AutomaticSize = Enum.AutomaticSize.Y
+	holder.BackgroundTransparency = 1
+	holder.BorderSizePixel = 0
+	holder.ZIndex = 5000
+	holder.ClipsDescendants = false
+	pcall(function()
+		holder.Parent = targetParent
+	end)
+
+	local layout = Instance.new("UIListLayout")
+	layout.Name = "LogLayout"
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Top
+	layout.Padding = UDim.new(0, 4)
+	layout.Parent = holder
+
+	HitLogModule.Holder = holder
+	return holder
+end
+
+function library:AddHitLog(configOrText, tag, tagColor, duration)
+	if library.HitLogsEnabled == false then return end
+
+	local tagStr = "HIT"
+	local tagCol = Color3.fromRGB(80, 220, 120)
+	local message = ""
+	local dur = 4.0
+
+	if type(configOrText) == "table" then
+		tagStr = configOrText.Tag or configOrText.tag or "HIT"
+		tagCol = configOrText.TagColor or configOrText.Color or configOrText.color or (tagStr == "MISS" and Color3.fromRGB(240, 80, 80) or Color3.fromRGB(80, 220, 120))
+		dur = tonumber(configOrText.Duration or configOrText.duration) or 4.0
+
+		if configOrText.Text or configOrText.text or configOrText.Message then
+			message = tostring(configOrText.Text or configOrText.text or configOrText.Message)
+		elseif configOrText.Target then
+			local target = tostring(configOrText.Target)
+			local part = tostring(configOrText.Part or "Head")
+			local damage = tonumber(configOrText.Damage) or 100
+			local remaining = configOrText.Remaining ~= nil and tostring(configOrText.Remaining) or "0"
+			local distStr = configOrText.Distance and (" [" .. tostring(configOrText.Distance) .. "m]") or ""
+			message = "Hit <b><font color=\"#ffffff\">" .. target .. "</font></b> in the <b><font color=\"#5b85c5\">" .. part .. "</font></b> for <b><font color=\"#50dc78\">" .. damage .. " dmg</font></b> (" .. remaining .. " hp left)" .. distStr
+		else
+			message = "Hit registered"
+		end
+	else
+		message = tostring(configOrText or "Hit registered")
+		if tag ~= nil then tagStr = tostring(tag) end
+		if tagColor ~= nil then
+			if typeof(tagColor) == "Color3" then
+				tagCol = tagColor
+			elseif type(tagColor) == "number" then
+				dur = tagColor
+			end
+		end
+		if duration ~= nil and type(duration) == "number" then
+			dur = duration
+		end
+	end
+
+	local holder = getHitLogHolder()
+	if not holder then return end
+
+	-- Cleanup oldest if exceeding max
+	while #HitLogModule.ActiveLogs >= HitLogModule.MaxLogs do
+		local oldest = table.remove(HitLogModule.ActiveLogs, 1)
+		if oldest and oldest.Frame then
+			pcall(function() oldest.Frame:Destroy() end)
+		end
+	end
+
+	local LogCard = Instance.new("Frame")
+	local LogCorner = Instance.new("UICorner")
+	local LogStroke = Instance.new("UIStroke")
+	local Accent = Instance.new("Frame")
+	local AccentCorner = Instance.new("UICorner")
+	local ContentFrame = Instance.new("Frame")
+	local ContentLayout = Instance.new("UIListLayout")
+	local ContentPadding = Instance.new("UIPadding")
+	local TagLabel = Instance.new("TextLabel")
+	local TextLabel = Instance.new("TextLabel")
+
+	LogCard.Name = "HitLogItem"
+	LogCard.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	LogCard.BackgroundTransparency = 1
+	LogCard.BorderSizePixel = 0
+	LogCard.AutomaticSize = Enum.AutomaticSize.X
+	LogCard.Size = UDim2.new(0, 0, 0, 24)
+	LogCard.ClipsDescendants = false
+	LogCard.ZIndex = 5001
+	LogCard.Parent = holder
+
+	LogCorner.CornerRadius = UDim.new(0, 4)
+	LogCorner.Parent = LogCard
+
+	LogStroke.Color = Color3.fromRGB(50, 50, 50)
+	LogStroke.Thickness = 1
+	LogStroke.Transparency = 1
+	LogStroke.LineJoinMode = Enum.LineJoinMode.Round
+	LogStroke.Parent = LogCard
+
+	Accent.Name = "Accent"
+	Accent.BackgroundColor3 = tagCol
+	Accent.BackgroundTransparency = 1
+	Accent.BorderSizePixel = 0
+	Accent.Position = UDim2.new(0, 0, 0, 0)
+	Accent.Size = UDim2.new(0, 3, 1, 0)
+	Accent.ZIndex = 5002
+	Accent.Parent = LogCard
+
+	AccentCorner.CornerRadius = UDim.new(0, 4)
+	AccentCorner.Parent = Accent
+
+	ContentFrame.Name = "Content"
+	ContentFrame.BackgroundTransparency = 1
+	ContentFrame.BorderSizePixel = 0
+	ContentFrame.AutomaticSize = Enum.AutomaticSize.X
+	ContentFrame.Size = UDim2.new(0, 0, 1, 0)
+	ContentFrame.ZIndex = 5002
+	ContentFrame.Parent = LogCard
+
+	ContentPadding.PaddingLeft = UDim.new(0, 10)
+	ContentPadding.PaddingRight = UDim.new(0, 12)
+	ContentPadding.Parent = ContentFrame
+
+	ContentLayout.FillDirection = Enum.FillDirection.Horizontal
+	ContentLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	ContentLayout.Padding = UDim.new(0, 6)
+	ContentLayout.Parent = ContentFrame
+
+	TagLabel.Name = "Tag"
+	TagLabel.BackgroundTransparency = 1
+	TagLabel.BorderSizePixel = 0
+	TagLabel.Font = Enum.Font.SourceSansBold
+	TagLabel.Text = "[" .. string.upper(tagStr) .. "]"
+	TagLabel.TextColor3 = tagCol
+	TagLabel.TextSize = 13
+	TagLabel.TextTransparency = 1
+	TagLabel.AutomaticSize = Enum.AutomaticSize.X
+	TagLabel.Size = UDim2.new(0, 0, 1, 0)
+	TagLabel.ZIndex = 5003
+	TagLabel.Parent = ContentFrame
+
+	TextLabel.Name = "Message"
+	TextLabel.BackgroundTransparency = 1
+	TextLabel.BorderSizePixel = 0
+	TextLabel.Font = Enum.Font.SourceSans
+	TextLabel.Text = message
+	TextLabel.RichText = true
+	TextLabel.TextColor3 = Color3.fromRGB(220, 225, 235)
+	TextLabel.TextSize = 14
+	TextLabel.TextTransparency = 1
+	TextLabel.AutomaticSize = Enum.AutomaticSize.X
+	TextLabel.Size = UDim2.new(0, 0, 1, 0)
+	TextLabel.ZIndex = 5003
+	TextLabel.Parent = ContentFrame
+
+	local logItem = { Frame = LogCard }
+	table.insert(HitLogModule.ActiveLogs, logItem)
+
+	-- Fade In
+	TweenService:Create(LogCard, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.2 }):Play()
+	TweenService:Create(LogStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.3 }):Play()
+	TweenService:Create(Accent, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
+	TweenService:Create(TagLabel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
+	TweenService:Create(TextLabel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
+
+	-- Expire & Fade Out
+	task.delay(dur, function()
+		if not LogCard or not LogCard.Parent then return end
+		local fadeTween = TweenService:Create(LogCard, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0) })
+		TweenService:Create(LogStroke, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = 1 }):Play()
+		TweenService:Create(Accent, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(TagLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
+		TweenService:Create(TextLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
+		fadeTween:Play()
+		fadeTween.Completed:Connect(function()
+			for idx, item in ipairs(HitLogModule.ActiveLogs) do
+				if item == logItem then
+					table.remove(HitLogModule.ActiveLogs, idx)
+					break
+				end
+			end
+			pcall(function() LogCard:Destroy() end)
+		end)
+	end)
+
+	return logItem
+end
+
+-- Helper Shorthands
+function library:HitLog(target, part, damage, remaining, distance)
+	return library:AddHitLog({
+		Tag = "HIT",
+		TagColor = Color3.fromRGB(80, 220, 120),
+		Target = tostring(target or "Player"),
+		Part = tostring(part or "Head"),
+		Damage = tonumber(damage) or 100,
+		Remaining = remaining ~= nil and tonumber(remaining) or 0,
+		Distance = distance,
+		Duration = 4.0
+	})
+end
+
+function library:MissLog(target, reason, distance)
+	local r = reason or "spread"
+	local dist = distance and (" [" .. tostring(distance) .. "m]") or ""
+	return library:AddHitLog({
+		Tag = "MISS",
+		TagColor = Color3.fromRGB(240, 80, 80),
+		Text = "Missed shot at <b><font color=\"#ffffff\">" .. tostring(target or "target") .. "</font></b> (" .. tostring(r) .. ")" .. dist,
+		Duration = 4.0
+	})
+end
+
+function library:Log(text, tag, color, duration)
+	return library:AddHitLog(text, tag, color, duration)
+end
+
+function library:SetHitLogsEnabled(enabled)
+	library.HitLogsEnabled = (enabled == true)
+	HitLogModule.Enabled = library.HitLogsEnabled
+	if not library.HitLogsEnabled and HitLogModule.Holder then
+		for _, log in ipairs(HitLogModule.ActiveLogs) do
+			if log and log.Frame then pcall(function() log.Frame:Destroy() end) end
+		end
+		HitLogModule.ActiveLogs = {}
+	end
+end
+
+function library:SetHitLogPosition(newPos, newAnchor)
+	if typeof(newPos) == "UDim2" then
+		HitLogModule.Position = newPos
+		if HitLogModule.Holder then HitLogModule.Holder.Position = newPos end
+	end
+	if typeof(newAnchor) == "Vector2" then
+		HitLogModule.AnchorPoint = newAnchor
+		if HitLogModule.Holder then HitLogModule.Holder.AnchorPoint = newAnchor end
+	end
+end
+
+function library:ClearHitLogs()
+	if HitLogModule.Holder then
+		for _, log in ipairs(HitLogModule.ActiveLogs) do
+			if log and log.Frame then pcall(function() log.Frame:Destroy() end) end
+		end
+		HitLogModule.ActiveLogs = {}
+	end
+end
+
 function library:Init(name)
     for i,v in pairs(Upper:GetChildren()) do
         if v:IsA('TextButton') then
