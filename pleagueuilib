@@ -2232,6 +2232,12 @@ function library:SetKeybindNotifications(enabled)
 	library.KeybindNotifications = (enabled == true)
 end
 
+-- Slider Notifications Setting (varsayilan kapali - istege gore acilir)
+library.SliderNotifications = false
+function library:SetSliderNotifications(enabled)
+	library.SliderNotifications = (enabled == true)
+end
+
 -- Default KeybindList instance
 library.KeybindList = library:AddKeybindList({ Title = "Keybinds", Visible = true })
 
@@ -2977,16 +2983,41 @@ function library:AddWindow(text)
 
 		end
  
-		function inside:AddSlider(Text,Max,Min,def,Action)
+		function inside:AddSlider(Text,Max,Min,def,Action,Options)
 			Text = Text or 'Not Defined'
 			Max = Max or 100
-			Min =Min or Max/4
+			Min = Min or Max/4
 			def = def or Max/2
+			Options = Options or {}
 			local mouse = game.Players.LocalPlayer:GetMouse()
 			local SliderDef = math.clamp(def, Min, Max) or math.clamp(50, Min, Max)
-			local DefaultScale =  (SliderDef - Min) / (Max - Min)
+			local DefaultScale = (SliderDef - Min) / (Max - Min)
 			Action = Action or function() end
 			local Value;
+			-- Bildirim ayarı: global ve per-slider kontrol
+			local sliderNotify = (Options.Notify ~= false) -- varsayılan: açık
+			local notifyDebounce = nil
+			local lastNotifiedValue = nil
+			local function sendSliderNotify(val)
+				if not library.SliderNotifications then return end
+				if not sliderNotify then return end
+				local formatted = ('%0.2f'):format(val)
+				if lastNotifiedValue == formatted then return end
+				lastNotifiedValue = formatted
+				if notifyDebounce then
+					task.cancel(notifyDebounce)
+				end
+				notifyDebounce = task.delay(0.3, function()
+					pcall(function()
+						library:Notify({
+							Title = Text,
+							Text = formatted,
+							Duration = 1.2,
+							Color = Color3.fromRGB(91, 133, 197)
+						})
+					end)
+				end)
+			end
 
 			--[Slider]--
 			local obj1 = Instance.new("Frame")
@@ -3090,6 +3121,7 @@ function library:AddWindow(text)
 						pcall(function()
 							Action(Value)
 						end)
+						sendSliderNotify(Value)
 						return
 					end
 					if tonumber(obj4.Text) > Max then
@@ -3103,6 +3135,7 @@ function library:AddWindow(text)
 						pcall(function()
 							Action(Value)
 						end)
+						sendSliderNotify(Value)
 						return
 					end
 					if tonumber(obj4.Text) < Min then
@@ -3116,6 +3149,7 @@ function library:AddWindow(text)
 						pcall(function()
 							Action(Value)
 						end)
+						sendSliderNotify(Value)
 						return
 					end
 					st = obj4.Text
@@ -3126,6 +3160,7 @@ function library:AddWindow(text)
 					pcall(function()
 						Action(Value)
 					end)
+					sendSliderNotify(Value)
 				else
 					obj4.Text = st 
 					Value = tonumber(obj4.Text)
@@ -3171,6 +3206,7 @@ function library:AddWindow(text)
 							Action(Value)
 						end)
 						obj6.Size = UDim2.new(0, math.clamp(mouse.X - obj6.AbsolutePosition.X, 0, 244), 0, 13)
+						sendSliderNotify(Value)
 						moveconnection:Disconnect()
 						releaseconnection:Disconnect()
 					end
