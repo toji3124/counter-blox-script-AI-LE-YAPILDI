@@ -852,6 +852,8 @@ function library:AddWatermark(Text, Options)
 	local ShowPing = Options.ShowPing ~= false -- varsayılan true
 	local ShowGame = Options.ShowGame ~= false -- varsayılan true (OYUN ADI)
 	local Position = Options.Position or "TopRight" -- "TopLeft", "TopRight", "BottomLeft", "BottomRight"
+	local EnableGlow = Options.EnableGlow == true -- varsayılan false (opsiyonel)
+	local EnableShadow = Options.EnableShadow == true -- varsayılan false (opsiyonel)
 	
 	-- FPS/Ping tracking
 	local fps = 0
@@ -893,6 +895,61 @@ function library:AddWatermark(Text, Options)
 	obj2.Color = Color3.fromRGB(91, 133, 197)
 	obj2.Thickness = 2
 	obj2.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	
+	--[GLOW EFFECT - Opsiyonel]--
+	local glowStroke
+	if EnableGlow then
+		glowStroke = Instance.new("UIStroke", obj1)
+		glowStroke.Color = Color3.fromRGB(91, 133, 197)
+		glowStroke.Thickness = 0
+		glowStroke.Transparency = 0.5
+		glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		
+		-- Glow animasyonu
+		task.spawn(function()
+			while obj1 and obj1.Parent do
+				for i = 0, 1, 0.05 do
+					if not obj1 or not obj1.Parent then break end
+					glowStroke.Thickness = 2 + (i * 4) -- 2-6 arası
+					glowStroke.Transparency = 0.5 + (i * 0.5) -- 0.5-1 arası
+					task.wait(0.05)
+				end
+				for i = 1, 0, -0.05 do
+					if not obj1 or not obj1.Parent then break end
+					glowStroke.Thickness = 2 + (i * 4)
+					glowStroke.Transparency = 0.5 + (i * 0.5)
+					task.wait(0.05)
+				end
+			end
+		end)
+	end
+	
+	--[SHADOW EFFECT - Opsiyonel]--
+	local shadowFrame
+	if EnableShadow then
+		shadowFrame = Instance.new("Frame", obj1)
+		shadowFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+		shadowFrame.Position = UDim2.new(0.5, 2, 0.5, 3) -- Hafif offset
+		shadowFrame.Size = UDim2.new(1, 0, 1, 0)
+		shadowFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		shadowFrame.BackgroundTransparency = 0.7
+		shadowFrame.BorderSizePixel = 0
+		shadowFrame.ZIndex = 99 -- Main frame'in altında
+		
+		local shadowCorner = Instance.new("UICorner", shadowFrame)
+		shadowCorner.CornerRadius = UDim.new(0, 4)
+		
+		-- Shadow blur efekti (ImageLabel ile)
+		local shadowBlur = Instance.new("ImageLabel", shadowFrame)
+		shadowBlur.Size = UDim2.new(1, 20, 1, 20)
+		shadowBlur.Position = UDim2.new(0.5, 0, 0.5, 0)
+		shadowBlur.AnchorPoint = Vector2.new(0.5, 0.5)
+		shadowBlur.BackgroundTransparency = 1
+		shadowBlur.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+		shadowBlur.ImageColor3 = Color3.fromRGB(0, 0, 0)
+		shadowBlur.ImageTransparency = 0.8
+		shadowBlur.ZIndex = 99
+	end
 	
 	--[UICorner]--
 	local corner = Instance.new("UICorner", obj1)
@@ -955,7 +1012,7 @@ function library:AddWatermark(Text, Options)
 		gameLabel.BackgroundTransparency = 1
 		gameLabel.BorderSizePixel = 0
 		gameLabel.Position = UDim2.new(0.25, 20, 0, 0)
-		gameLabel.Size = UDim2.new(0.45, -25, 1, 0) -- %45 genişlik - dinamik
+		gameLabel.Size = UDim2.new(0.4, -25, 1, 0) -- %40 genişlik
 		gameLabel.Font = Enum.Font.GothamSemibold
 		gameLabel.Text = gameName
 		gameLabel.TextColor3 = Color3.fromRGB(91, 133, 197)
@@ -966,12 +1023,29 @@ function library:AddWatermark(Text, Options)
 		gameLabel.ZIndex = 102
 	end
 	
+	--[SEPARATOR 2]--
+	local sep2
+	if ShowGame then
+		sep2 = Instance.new("TextLabel", obj3)
+		sep2.BackgroundTransparency = 1
+		sep2.BorderSizePixel = 0
+		sep2.Position = UDim2.new(0.65, 0, 0, 0)
+		sep2.Size = UDim2.new(0, 10, 1, 0)
+		sep2.Font = Enum.Font.Gotham
+		sep2.Text = "|"
+		sep2.TextColor3 = Color3.fromRGB(91, 133, 197)
+		sep2.TextSize = 12
+		sep2.TextXAlignment = Enum.TextXAlignment.Center
+		sep2.TextYAlignment = Enum.TextYAlignment.Center
+		sep2.ZIndex = 102
+	end
+	
 	--[INFO LABEL (FPS + PING)]--
 	local infoLabel = Instance.new("TextLabel", obj3)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.BorderSizePixel = 0
-	infoLabel.Position = UDim2.new(0.7, 5, 0, 0)
-	infoLabel.Size = UDim2.new(0.3, -13, 1, 0) -- %30 genişlik
+	infoLabel.Position = UDim2.new(0.65, 15, 0, 0)
+	infoLabel.Size = UDim2.new(0.35, -23, 1, 0) -- %35 genişlik
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.Text = ""
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -1065,6 +1139,15 @@ function library:AddWatermark(Text, Options)
 			if ShowGame and sep1 then
 				sep1.TextTransparency = 1
 			end
+			if ShowGame and sep2 then
+				sep2.TextTransparency = 1
+			end
+			if EnableGlow and glowStroke then
+				glowStroke.Transparency = 1
+			end
+			if EnableShadow and shadowFrame then
+				shadowFrame.BackgroundTransparency = 1
+			end
 			
 			TweenService:Create(obj1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				BackgroundTransparency = 0
@@ -1086,6 +1169,16 @@ function library:AddWatermark(Text, Options)
 			if ShowGame and sep1 then
 				TweenService:Create(sep1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					TextTransparency = 0
+				}):Play()
+			end
+			if ShowGame and sep2 then
+				TweenService:Create(sep2, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					TextTransparency = 0
+				}):Play()
+			end
+			if EnableShadow and shadowFrame then
+				TweenService:Create(shadowFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					BackgroundTransparency = 0.7
 				}):Play()
 			end
 		else
@@ -1110,6 +1203,16 @@ function library:AddWatermark(Text, Options)
 			if ShowGame and sep1 then
 				TweenService:Create(sep1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					TextTransparency = 1
+				}):Play()
+			end
+			if ShowGame and sep2 then
+				TweenService:Create(sep2, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					TextTransparency = 1
+				}):Play()
+			end
+			if EnableShadow and shadowFrame then
+				TweenService:Create(shadowFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					BackgroundTransparency = 1
 				}):Play()
 			end
 			
