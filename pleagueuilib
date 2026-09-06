@@ -1360,6 +1360,18 @@ library.Notification = library.Notify
 --            WARNING / POPUP UI (PLAGUE UI İLE %100 UYUMLU)           --
 --====================================================================--
 
+library.DismissedWarnings = library.DismissedWarnings or {}
+
+function library:ResetWarning(key)
+	if key then
+		library.DismissedWarnings[key] = nil
+	end
+end
+
+function library:ResetAllWarnings()
+	library.DismissedWarnings = {}
+end
+
 function library:ShowWarning(config)
 	local title      = config.Title or config.title or "UYARI"
 	local text       = config.Text or config.text or config.Message or "Emin misiniz?"
@@ -1367,6 +1379,14 @@ function library:ShowWarning(config)
 	local cancelTxt  = config.CancelText or "İptal"
 	local onConfirm  = config.OnConfirm
 	local onCancel   = config.OnCancel
+	local warningKey = config.Key or config.key or config.Id or config.id or title
+	local showDismiss= config.ShowDontShowAgain ~= false -- varsayılan olarak true
+
+	-- Eğer bu uyarı daha önce "Bir daha gösterme" olarak işaretlendiyse doğrudan onayla
+	if warningKey and library.DismissedWarnings[warningKey] then
+		if onConfirm then pcall(onConfirm) end
+		return true
+	end
 
 	-- Plague UI'nin ana ScreenGui'sini (PCR_1) hedef al
 	local targetGui = PCR_1
@@ -1396,7 +1416,7 @@ function library:ShowWarning(config)
 	Dialog.Parent = Overlay
 	Dialog.AnchorPoint = Vector2.new(0.5, 0.5)
 	Dialog.Position = UDim2.new(0.5, 0, 0.5, 20)
-	Dialog.Size = UDim2.new(0, 360, 0, 175)
+	Dialog.Size = UDim2.new(0, 360, 0, 200)
 	Dialog.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Plague UI Ana BG
 	Dialog.BorderSizePixel = 0
 	Dialog.ZIndex = 2501
@@ -1479,7 +1499,7 @@ function library:ShowWarning(config)
 	BodyBox.Name = "BodyBox"
 	BodyBox.Parent = Dialog
 	BodyBox.Position = UDim2.new(0, 10, 0, 36)
-	BodyBox.Size = UDim2.new(1, -20, 0, 85)
+	BodyBox.Size = UDim2.new(1, -20, 0, 72)
 	BodyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Plague Section BG
 	BodyBox.BorderSizePixel = 0
 	BodyBox.ZIndex = 2502
@@ -1524,7 +1544,80 @@ function library:ShowWarning(config)
 	DescLabel.ZIndex = 2503
 	DescLabel.TextTransparency = 1
 
-	-- Buton Tutucu
+	-- ── "Bir Daha Gösterme" Kutusu ─────────────────────────────────
+	local isDismissChecked = false
+	local DismissHolder = Instance.new("Frame")
+	DismissHolder.Name = "DismissHolder"
+	DismissHolder.Parent = Dialog
+	DismissHolder.Position = UDim2.new(0, 12, 0, 115)
+	DismissHolder.Size = UDim2.new(1, -24, 0, 22)
+	DismissHolder.BackgroundTransparency = 1
+	DismissHolder.ZIndex = 2502
+	DismissHolder.Visible = showDismiss
+
+	local CheckBox = Instance.new("TextButton")
+	CheckBox.Name = "CheckBox"
+	CheckBox.Parent = DismissHolder
+	CheckBox.Size = UDim2.new(0, 16, 0, 16)
+	CheckBox.Position = UDim2.new(0, 0, 0.5, -8)
+	CheckBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	CheckBox.BorderSizePixel = 0
+	CheckBox.Text = ""
+	CheckBox.ZIndex = 2503
+	CheckBox.BackgroundTransparency = 1
+
+	local CheckCorner = Instance.new("UICorner")
+	CheckCorner.CornerRadius = UDim.new(0, 3)
+	CheckCorner.Parent = CheckBox
+
+	local CheckStroke = Instance.new("UIStroke")
+	CheckStroke.Parent = CheckBox
+	CheckStroke.Color = Color3.fromRGB(52, 52, 52)
+	CheckStroke.Thickness = 1
+	CheckStroke.Transparency = 1
+
+	local CheckIcon = Instance.new("TextLabel")
+	CheckIcon.Parent = CheckBox
+	CheckIcon.Size = UDim2.new(1, 0, 1, 0)
+	CheckIcon.BackgroundTransparency = 1
+	CheckIcon.Font = Enum.Font.SourceSansBold
+	CheckIcon.Text = "✓"
+	CheckIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CheckIcon.TextSize = 13
+	CheckIcon.ZIndex = 2504
+	CheckIcon.Visible = false
+
+	local CheckLabel = Instance.new("TextButton")
+	CheckLabel.Name = "CheckLabel"
+	CheckLabel.Parent = DismissHolder
+	CheckLabel.BackgroundTransparency = 1
+	CheckLabel.Position = UDim2.new(0, 24, 0, 0)
+	CheckLabel.Size = UDim2.new(1, -24, 1, 0)
+	CheckLabel.Font = Enum.Font.SourceSans
+	CheckLabel.Text = "Bu uyarıyı bir daha gösterme"
+	CheckLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+	CheckLabel.TextSize = 13
+	CheckLabel.TextXAlignment = Enum.TextXAlignment.Left
+	CheckLabel.ZIndex = 2503
+	CheckLabel.TextTransparency = 1
+
+	local function toggleDismissCheck()
+		isDismissChecked = not isDismissChecked
+		if isDismissChecked then
+			CheckBox.BackgroundColor3 = Color3.fromRGB(91, 133, 197) -- Plague Accent Mavi
+			CheckIcon.Visible = true
+			CheckLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+		else
+			CheckBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+			CheckIcon.Visible = false
+			CheckLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+		end
+	end
+
+	CheckBox.MouseButton1Click:Connect(toggleDismissCheck)
+	CheckLabel.MouseButton1Click:Connect(toggleDismissCheck)
+
+	-- ── Buton Tutucu ──────────────────────────────────────────────
 	local BtnHolder = Instance.new("Frame")
 	BtnHolder.Parent = Dialog
 	BtnHolder.BackgroundTransparency = 1
@@ -1596,6 +1689,9 @@ function library:ShowWarning(config)
 			TweenService:Create(BodyStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
 			TweenService:Create(SideAccent, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
 			TweenService:Create(DescLabel, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+			TweenService:Create(CheckBox, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+			TweenService:Create(CheckStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
+			TweenService:Create(CheckLabel, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
 			TweenService:Create(ConfirmBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
 			TweenService:Create(CancelBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
 			TweenService:Create(CancelStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
@@ -1606,6 +1702,9 @@ function library:ShowWarning(config)
 	end
 
 	ConfirmBtn.MouseButton1Click:Connect(function()
+		if isDismissChecked and warningKey then
+			library.DismissedWarnings[warningKey] = true
+		end
 		closeDialog()
 		if onConfirm then pcall(onConfirm) end
 	end)
@@ -1664,6 +1763,11 @@ function library:ShowWarning(config)
 		TweenService:Create(BodyStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
 		TweenService:Create(SideAccent, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
 		TweenService:Create(DescLabel, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+		if showDismiss then
+			TweenService:Create(CheckBox, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+			TweenService:Create(CheckStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
+			TweenService:Create(CheckLabel, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+		end
 		TweenService:Create(ConfirmBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
 		TweenService:Create(CancelBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
 		TweenService:Create(CancelStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
@@ -3117,7 +3221,7 @@ function library:AddWindow(text)
 			end
 			return r * 7.5
 		end
-		function inside:AddToggle(Text,Enabled,keybind,Callback)
+		function inside:AddToggle(Text,Enabled,keybind,Callback,WarningConfig)
 			Callback = Callback or function() end
 			Text = Text or 'Not Defined'
 			local activated = (Enabled == true)
@@ -3194,7 +3298,30 @@ function library:AddWindow(text)
 			end
 
 			local function Toggle(source)
-				SetState(not activated, true, source or "ui")
+				local targetState = not activated
+				-- Eğer toggle açılacaksa ve WarningConfig tanımlanmışsa
+				if targetState and WarningConfig then
+					local wKey = WarningConfig.Key or WarningConfig.key or WarningConfig.Id or (Text .. "_Warning")
+					if not library.DismissedWarnings[wKey] then
+						library:ShowWarning({
+							Key = wKey,
+							Title = WarningConfig.Title or WarningConfig.title or (Text .. " Uyarısı"),
+							Text = WarningConfig.Text or WarningConfig.text or WarningConfig.Message or "Bu özelliği açmak istediğinize emin misiniz?",
+							ConfirmText = WarningConfig.ConfirmText or "Aç",
+							CancelText = WarningConfig.CancelText or "Vazgeç",
+							ShowDontShowAgain = WarningConfig.ShowDontShowAgain ~= false,
+							OnConfirm = function()
+								SetState(true, true, source or "ui")
+							end,
+							OnCancel = function()
+								-- İptal edildi, toggle kapalı kalır
+							end
+						})
+						return
+					end
+				end
+
+				SetState(targetState, true, source or "ui")
 			end
 
 			TemplateToggle.Name = "TemplateToggle"
