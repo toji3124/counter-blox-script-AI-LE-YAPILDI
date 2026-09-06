@@ -2239,7 +2239,7 @@ function library:SetSliderNotifications(enabled)
 end
 
 -- Default KeybindList instance
-library.KeybindList = library:AddKeybindList({ Title = "Keybinds", Visible = true })
+library.KeybindList = library:AddKeybindList({ Title = "Keybinds", Visible = false })
 
 --====================================================================--
 --                   HIT LOGS / EVENT LOGS MODULE                     --
