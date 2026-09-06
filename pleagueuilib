@@ -3264,6 +3264,7 @@ function library:AddWindow(text)
 			local y = {};
 
 			local kbEntry = nil
+			local KeyCode = keybind -- aktif tuş referansı (rebind olunca burada güncellenir)
 			if keybind and library.KeybindList then
 				kbEntry = library.KeybindList:Add(Text, keybind, activated, "[Toggle]")
 			end
@@ -3302,9 +3303,8 @@ function library:AddWindow(text)
 				if doCallback and library.KeybindNotifications and source == "keybind" then
 					pcall(function()
 						local keyTag = ""
-						if keybind then
-							local kn = (typeof(KeyCode) == "EnumItem" and KeyCode.Name) or tostring(KeyCode or keybind)
-							keyTag = " [" .. formatKeyName(kn) .. "]"
+						if KeyCode then
+							keyTag = " [" .. formatKeyName(KeyCode) .. "]"
 						end
 						if activated then
 							library:Notify({
@@ -3434,7 +3434,7 @@ function library:AddWindow(text)
 
 			if keybind then
 				local ischanging = false;
-				local KeyCode = keybind
+				-- KeyCode zaten üstte tanımlandı, burada tekrar tanımlamıyoruz
 				game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
 					if not gp then 
 						if inputMatches(a, KeyCode) and ischanging == false then 
