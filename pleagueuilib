@@ -2104,15 +2104,15 @@ function library:ShowWarning(config)
 		return true
 	end
 
-	-- Plague UI'nin ana ScreenGui'sini (PCR_1) hedef al
-	local targetGui = PCR_1
+	-- Plague UI'nin overlay ScreenGui'sini hedef al (ana UI'den bağımsız)
+	local targetGui = PCR_OVERLAY
 	if not targetGui or not targetGui.Parent then
 		pcall(function()
-			targetGui = game:GetService("CoreGui"):FindFirstChild("PCR_1")
+			targetGui = game:GetService("CoreGui"):FindFirstChild("PCR_OVERLAY")
 		end)
 	end
 	if not targetGui then
-		targetGui = PCR_1
+		targetGui = PCR_OVERLAY
 	end
 
 	-- Arka plan karartma (Plague tarzı şık overlay)
