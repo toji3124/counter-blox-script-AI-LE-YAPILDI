@@ -2968,6 +2968,29 @@ function library:SetKeybindNotifications(enabled)
 	library.KeybindNotifications = (enabled == true)
 end
 
+-- Keybind Bildirim Formatı Özelleştirme
+library.KeybindNotificationFormat = {
+	ShowKey = true,           -- Show key name in brackets
+	EnabledText = "Enabled",
+	DisabledText = "Disabled",
+	EnabledColor = Color3.fromRGB(80, 220, 120),
+	DisabledColor = Color3.fromRGB(220, 80, 80),
+	Duration = 1.8,
+	-- Custom format fonksiyonu (opsiyonel)
+	-- CustomFormat = function(featureName, isEnabled, keyName) return "text" end
+}
+
+function library:SetKeybindNotificationFormat(options)
+	if not options then return end
+	if options.ShowKey ~= nil then library.KeybindNotificationFormat.ShowKey = options.ShowKey end
+	if options.EnabledText then library.KeybindNotificationFormat.EnabledText = options.EnabledText end
+	if options.DisabledText then library.KeybindNotificationFormat.DisabledText = options.DisabledText end
+	if options.EnabledColor then library.KeybindNotificationFormat.EnabledColor = options.EnabledColor end
+	if options.DisabledColor then library.KeybindNotificationFormat.DisabledColor = options.DisabledColor end
+	if options.Duration then library.KeybindNotificationFormat.Duration = options.Duration end
+	if options.CustomFormat then library.KeybindNotificationFormat.CustomFormat = options.CustomFormat end
+end
+
 -- Slider Notifications Setting (varsayilan kapali - istege gore acilir)
 library.SliderNotifications = false
 function library:SetSliderNotifications(enabled)
@@ -4074,25 +4097,39 @@ function library:AddWindow(text)
 				-- Bildirim sadece keybind kaynağından geldiğinde gönderilir (UI tıklamasında gönderilmez)
 				if doCallback and library.KeybindNotifications and source == "keybind" then
 					pcall(function()
-						local keyTag = ""
-						if KeyCode then
-							keyTag = " [" .. formatKeyName(KeyCode) .. "]"
-						end
-						if activated then
-							library:Notify({
-								Title = Text,
-								Text = "Açıldı (Aktif)" .. keyTag,
-								Duration = 1.8,
-								Color = Color3.fromRGB(80, 220, 120)
-							})
+						local fmt = library.KeybindNotificationFormat
+						local notifText, notifColor, notifDuration
+						
+						-- Custom format fonksiyonu varsa kullan
+						if fmt.CustomFormat then
+							local keyName = KeyCode and formatKeyName(KeyCode) or nil
+							notifText = fmt.CustomFormat(Text, activated, keyName)
+							notifColor = activated and fmt.EnabledColor or fmt.DisabledColor
+							notifDuration = fmt.Duration
 						else
-							library:Notify({
-								Title = Text,
-								Text = "Kapatıldı (Kapalı)" .. keyTag,
-								Duration = 1.5,
-								Color = Color3.fromRGB(220, 80, 80)
-							})
+							-- Varsayılan format
+							local keyTag = ""
+							if fmt.ShowKey and KeyCode then
+								keyTag = " [" .. formatKeyName(KeyCode) .. "]"
+							end
+							
+							if activated then
+								notifText = fmt.EnabledText .. keyTag
+								notifColor = fmt.EnabledColor
+								notifDuration = fmt.Duration
+							else
+								notifText = fmt.DisabledText .. keyTag
+								notifColor = fmt.DisabledColor
+								notifDuration = fmt.Duration * 0.83  -- Kapatma biraz daha kısa
+							end
 						end
+						
+						library:Notify({
+							Title = Text,
+							Text = notifText,
+							Duration = notifDuration,
+							Color = notifColor
+						})
 					end)
 				end
 
@@ -4247,8 +4284,8 @@ function library:AddWindow(text)
 						if library.KeybindNotifications then
 							pcall(function()
 								library:Notify({
-									Title = Text,
-									Text = "Tuş Atandı -> [" .. displayName .. "]",
+									Title = "Key Changed",
+									Text = Text .. " -> [" .. displayName .. "]",
 									Duration = 1.8,
 									Color = Color3.fromRGB(91, 133, 197)
 								})
@@ -4473,11 +4510,17 @@ function library:AddWindow(text)
 						end
 						if library.KeybindNotifications then
 							pcall(function()
+								local fmt = library.KeybindNotificationFormat
+								local keyName = formatKeyName(KeyCode)
+								local notifText = fmt.CustomFormat 
+									and fmt.CustomFormat(Text, true, keyName)
+									or (fmt.ShowKey and (fmt.EnabledText .. " [" .. keyName .. "]") or fmt.EnabledText)
+								
 								library:Notify({
 									Title = Text,
-									Text = "Açıldı / Tetiklendi [" .. formatKeyName(KeyCode) .. "]",
-									Duration = 1.5,
-									Color = Color3.fromRGB(80, 220, 120)
+									Text = notifText,
+									Duration = fmt.Duration * 0.83,
+									Color = fmt.EnabledColor
 								})
 							end)
 						end
@@ -4518,8 +4561,8 @@ function library:AddWindow(text)
 					if library.KeybindNotifications then
 						pcall(function()
 							library:Notify({
-								Title = Text,
-								Text = "Tuş Atandı -> [" .. displayName .. "]",
+								Title = "Tuş Değiştirildi",
+								Text = Text .. " -> [" .. displayName .. "]",
 								Duration = 1.8,
 								Color = Color3.fromRGB(91, 133, 197)
 							})
