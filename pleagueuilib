@@ -921,13 +921,14 @@ function library:AddWatermark(Text, Options)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.BorderSizePixel = 0
 	titleLabel.Position = UDim2.new(0, 8, 0, 0)
-	titleLabel.Size = UDim2.new(0, 100, 1, 0)
+	titleLabel.Size = UDim2.new(0, 90, 1, 0)
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.Text = Text
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.TextSize = 13
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	titleLabel.ZIndex = 102
 	
 	--[SEPARATOR 1]--
@@ -936,7 +937,7 @@ function library:AddWatermark(Text, Options)
 		sep1 = Instance.new("TextLabel", obj3)
 		sep1.BackgroundTransparency = 1
 		sep1.BorderSizePixel = 0
-		sep1.Position = UDim2.new(0, 115, 0, 0)
+		sep1.Position = UDim2.new(0, 103, 0, 0)
 		sep1.Size = UDim2.new(0, 10, 1, 0)
 		sep1.Font = Enum.Font.Gotham
 		sep1.Text = "|"
@@ -953,14 +954,15 @@ function library:AddWatermark(Text, Options)
 		gameLabel = Instance.new("TextLabel", obj3)
 		gameLabel.BackgroundTransparency = 1
 		gameLabel.BorderSizePixel = 0
-		gameLabel.Position = UDim2.new(0, 130, 0, 0)
-		gameLabel.Size = UDim2.new(0, 150, 1, 0)
+		gameLabel.Position = UDim2.new(0, 118, 0, 0)
+		gameLabel.Size = UDim2.new(0, 100, 1, 0)
 		gameLabel.Font = Enum.Font.GothamSemibold
 		gameLabel.Text = gameName
 		gameLabel.TextColor3 = Color3.fromRGB(91, 133, 197)
 		gameLabel.TextSize = 11
 		gameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		gameLabel.TextYAlignment = Enum.TextYAlignment.Center
+		gameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 		gameLabel.ZIndex = 102
 	end
 	
@@ -968,8 +970,8 @@ function library:AddWatermark(Text, Options)
 	local infoLabel = Instance.new("TextLabel", obj3)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.BorderSizePixel = 0
-	infoLabel.Position = UDim2.new(1, -170, 0, 0)
-	infoLabel.Size = UDim2.new(0, 165, 1, 0)
+	infoLabel.Position = UDim2.new(1, -180, 0, 0)
+	infoLabel.Size = UDim2.new(0, 175, 1, 0)
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.Text = ""
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -1013,17 +1015,17 @@ function library:AddWatermark(Text, Options)
 		
 		infoLabel.Text = table.concat(infoText, "  |  ")
 		
-		-- Dinamik boyut ayarlama (yatay)
+		-- Dinamik boyut ayarlama (yatay) - daha geniş
 		local titleWidth = game:GetService("TextService"):GetTextSize(titleLabel.Text, titleLabel.TextSize, titleLabel.Font, Vector2.new(1000, 20)).X
 		local infoWidth = game:GetService("TextService"):GetTextSize(infoLabel.Text, infoLabel.TextSize, infoLabel.Font, Vector2.new(1000, 20)).X
 		
-		local totalWidth = titleWidth + infoWidth + 40 -- padding
+		local totalWidth = titleWidth + infoWidth + 60 -- daha fazla padding
 		if ShowGame and gameLabel then
 			local gameWidth = game:GetService("TextService"):GetTextSize(gameLabel.Text, gameLabel.TextSize, gameLabel.Font, Vector2.new(1000, 20)).X
-			totalWidth = totalWidth + gameWidth + 30 -- separator + padding
+			totalWidth = totalWidth + math.min(gameWidth, 100) + 40 -- game max 100px, separator padding
 		end
 		
-		local newWidth = math.max(300, totalWidth)
+		local newWidth = math.max(350, totalWidth) -- minimum 350px
 		
 		TweenService:Create(obj1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Size = UDim2.new(0, newWidth, 0, 28)
