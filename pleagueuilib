@@ -923,7 +923,7 @@ function library:AddWatermark(Text, Options)
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.TextStrokeTransparency = 0.8
+	titleLabel.TextStrokeTransparency = 1  -- Stroke kapalı (1 = tamamen transparan)
 	titleLabel.ZIndex = 102
 	
 	--[INFO LABEL (FPS + PING)]--
@@ -937,7 +937,7 @@ function library:AddWatermark(Text, Options)
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	infoLabel.TextSize = 12
 	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-	infoLabel.TextStrokeTransparency = 0.9
+	infoLabel.TextStrokeTransparency = 1  -- Stroke kapalı (1 = tamamen transparan)
 	infoLabel.ZIndex = 102
 	
 	--[ACCENT BAR]--
