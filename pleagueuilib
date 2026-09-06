@@ -1522,6 +1522,12 @@ library.ToggleKeybindList = function()
 	end
 end
 
+-- Keybind Notifications Setting
+library.KeybindNotifications = true
+function library:SetKeybindNotifications(enabled)
+	library.KeybindNotifications = (enabled == true)
+end
+
 -- Default KeybindList instance
 library.KeybindList = library:AddKeybindList({ Title = "Keybinds", Visible = true })
 
@@ -2392,6 +2398,15 @@ function library:AddWindow(text)
 							pcall(function()
 								Toggle()
 							end)
+							if library.KeybindNotifications then
+								pcall(function()
+									library:Notify({
+										Title = "Keybind",
+										Text = Text .. ": " .. (activated and "Enabled" or "Disabled") .. " [" .. formatKeyName(KeyCode) .. "]",
+										Duration = 1.6
+									})
+								end)
+							end
 						end
 					end
 				end)
@@ -2414,6 +2429,15 @@ function library:AddWindow(text)
 						KeyCode = v1.KeyCode.Name;
 						if kbEntry then
 							kbEntry:SetKey(v1.KeyCode)
+						end
+						if library.KeybindNotifications then
+							pcall(function()
+								library:Notify({
+									Title = "Keybind Changed",
+									Text = Text .. " -> [" .. formatKeyName(v1.KeyCode) .. "]",
+									Duration = 1.8
+								})
+							end)
 						end
 						wait(.2)
 						ischanging = false
@@ -2632,6 +2656,15 @@ function library:AddWindow(text)
 								if kbEntry then kbEntry:SetState(false) end
 							end)
 						end
+						if library.KeybindNotifications then
+							pcall(function()
+								library:Notify({
+									Title = "Keybind",
+									Text = Text .. " [" .. formatKeyName(KeyCode) .. "]",
+									Duration = 1.4
+								})
+							end)
+						end
 						pcall(function()
 							Action(a.KeyCode)
 						end)
@@ -2657,6 +2690,15 @@ function library:AddWindow(text)
 					KeyCode = v1.KeyCode.Name;
 					if kbEntry then
 						kbEntry:SetKey(v1.KeyCode)
+					end
+					if library.KeybindNotifications then
+						pcall(function()
+							library:Notify({
+								Title = "Keybind Changed",
+								Text = Text .. " -> [" .. formatKeyName(v1.KeyCode) .. "]",
+								Duration = 1.8
+							})
+						end)
 					end
 					wait(.2)
 					ischanging = false
