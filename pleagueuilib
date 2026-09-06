@@ -240,7 +240,7 @@ function OpenedColor(text,ColourDisplay,Action,def)
 
 	ANIMATEFRAME01.Name = "ANIMATEFRAME01"
 	ANIMATEFRAME01.Parent = COLORPALLETE
-	ANIMATEFRAME01.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	ANIMATEFRAME01.BackgroundColor3 = Color3.fromRGB(33, 33, 33)  -- Koyu gri (UI arka plan rengi ile aynı)
 	ANIMATEFRAME01.Position = UDim2.new(-0.0257352963, 0, -0.00666669384, 0)
 	ANIMATEFRAME01.Size = UDim2.new(0, 285, 0, 159)
 	ANIMATEFRAME01.ZIndex = 99
@@ -4539,9 +4539,6 @@ function library:AddWindow(text)
 					if inputMatches(a, KeyCode) and ischanging == false then 
 						if kbEntry then
 							kbEntry:SetState(true)
-							task.delay(0.25, function()
-								if kbEntry then kbEntry:SetState(false) end
-							end)
 						end
 						if library.KeybindNotifications then
 							pcall(function()
@@ -4580,6 +4577,17 @@ function library:AddWindow(text)
 						pcall(function()
 							Action(a.KeyCode ~= Enum.KeyCode.Unknown and a.KeyCode or a.UserInputType)
 						end)
+					end
+				end
+			end)
+			
+			-- InputEnded: Tuş bırakıldığında yeşil sönsün
+			game:GetService("UserInputService").InputEnded:connect(function(a, gp)
+				if not gp then
+					if inputMatches(a, KeyCode) and ischanging == false then
+						if kbEntry then
+							kbEntry:SetState(false)
+						end
 					end
 				end
 			end)
