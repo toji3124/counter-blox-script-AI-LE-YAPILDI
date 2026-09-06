@@ -1540,7 +1540,7 @@ local HitLogModule = {
 	Holder = nil,
 	MaxLogs = 7,
 	ActiveLogs = {},
-	Position = UDim2.new(0.5, 0, 0, 25),
+	Position = UDim2.new(0.5, 0, 0, 16),
 	AnchorPoint = Vector2.new(0.5, 0)
 }
 
@@ -1595,12 +1595,12 @@ function library:AddHitLog(configOrText, tag, tagColor, duration)
 	local tagStr = "HIT"
 	local tagCol = Color3.fromRGB(80, 220, 120)
 	local message = ""
-	local dur = 4.0
+	local dur = 2.2
 
 	if type(configOrText) == "table" then
 		tagStr = configOrText.Tag or configOrText.tag or "HIT"
 		tagCol = configOrText.TagColor or configOrText.Color or configOrText.color or (tagStr == "MISS" and Color3.fromRGB(240, 80, 80) or Color3.fromRGB(80, 220, 120))
-		dur = tonumber(configOrText.Duration or configOrText.duration) or 4.0
+		dur = tonumber(configOrText.Duration or configOrText.duration) or 2.2
 
 		if configOrText.Text or configOrText.text or configOrText.Message then
 			message = tostring(configOrText.Text or configOrText.text or configOrText.Message)
@@ -1770,7 +1770,7 @@ function library:HitLog(target, part, damage, remaining, distance)
 		Damage = tonumber(damage) or 100,
 		Remaining = remaining ~= nil and tonumber(remaining) or 0,
 		Distance = distance,
-		Duration = 4.0
+		Duration = 2.2
 	})
 end
 
@@ -1781,7 +1781,7 @@ function library:MissLog(target, reason, distance)
 		Tag = "MISS",
 		TagColor = Color3.fromRGB(240, 80, 80),
 		Text = "Missed shot at <b><font color=\"#ffffff\">" .. tostring(target or "target") .. "</font></b> (" .. tostring(r) .. ")" .. dist,
-		Duration = 4.0
+		Duration = 2.2
 	})
 end
 
