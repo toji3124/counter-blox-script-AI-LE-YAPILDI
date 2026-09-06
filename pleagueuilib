@@ -1275,6 +1275,359 @@ function library:AddWatermark(Text, Options)
 	return intern
 end
 
+-- ════════════════════════════════════════════════════════════════════════════
+--  ADD LIST - Genel Amaçlı Liste Sistemi
+-- ════════════════════════════════════════════════════════════════════════════
+
+function library:AddList(Options)
+	local list = {}
+	
+	-- Default options
+	Options = Options or {}
+	local Title = Options.Title or "LIST"
+	local StartVisible = Options.Visible ~= false
+	local Position = Options.Position or Vector2.new(20, 150)
+	local MaxEntries = Options.MaxEntries or 10
+	local EnableGlow = Options.EnableGlow == true
+	local EnableShadow = Options.EnableShadow == true
+	
+	-- Liste verileri
+	local entries = {}
+	local sortedEntries = {}
+	
+	--[MAIN LIST FRAME]--
+	local mainFrame = Instance.new("Frame")
+	mainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Size = UDim2.new(0, 220, 0, 200)
+	mainFrame.Position = UDim2.new(0, Position.X, 0, Position.Y)
+	mainFrame.ZIndex = 100
+	mainFrame.Name = "ListMain"
+	mainFrame.Visible = StartVisible
+	mainFrame.ClipsDescendants = true
+	mainFrame.Parent = PCR_1
+	
+	--[UIStroke - Border]--
+	local borderStroke = Instance.new("UIStroke", mainFrame)
+	borderStroke.Color = Color3.fromRGB(91, 133, 197)
+	borderStroke.Thickness = 2
+	borderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	
+	--[GLOW EFFECT - Opsiyonel]--
+	local glowStroke
+	if EnableGlow then
+		glowStroke = Instance.new("UIStroke", mainFrame)
+		glowStroke.Color = Color3.fromRGB(91, 133, 197)
+		glowStroke.Thickness = 0
+		glowStroke.Transparency = 0.5
+		glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		
+		task.spawn(function()
+			while mainFrame and mainFrame.Parent do
+				for i = 0, 1, 0.05 do
+					if not mainFrame or not mainFrame.Parent then break end
+					glowStroke.Thickness = 2 + (i * 4)
+					glowStroke.Transparency = 0.5 + (i * 0.5)
+					task.wait(0.05)
+				end
+				for i = 1, 0, -0.05 do
+					if not mainFrame or not mainFrame.Parent then break end
+					glowStroke.Thickness = 2 + (i * 4)
+					glowStroke.Transparency = 0.5 + (i * 0.5)
+					task.wait(0.05)
+				end
+			end
+		end)
+	end
+	
+	--[SHADOW EFFECT - Opsiyonel]--
+	local shadowFrame
+	if EnableShadow then
+		shadowFrame = Instance.new("Frame", mainFrame)
+		shadowFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+		shadowFrame.Position = UDim2.new(0.5, 2, 0.5, 3)
+		shadowFrame.Size = UDim2.new(1, 0, 1, 0)
+		shadowFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		shadowFrame.BackgroundTransparency = 0.7
+		shadowFrame.BorderSizePixel = 0
+		shadowFrame.ZIndex = 99
+		
+		local shadowCorner = Instance.new("UICorner", shadowFrame)
+		shadowCorner.CornerRadius = UDim.new(0, 4)
+	end
+	
+	--[UICorner]--
+	local corner = Instance.new("UICorner", mainFrame)
+	corner.CornerRadius = UDim.new(0, 4)
+	
+	--[GRADIENT]--
+	local gradient = Instance.new("UIGradient", mainFrame)
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 28, 28)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(18, 18, 18))
+	})
+	gradient.Rotation = 90
+	
+	--[HEADER FRAME]--
+	local headerFrame = Instance.new("Frame", mainFrame)
+	headerFrame.BackgroundColor3 = Color3.fromRGB(91, 133, 197)
+	headerFrame.BorderSizePixel = 0
+	headerFrame.Size = UDim2.new(1, 0, 0, 30)
+	headerFrame.ZIndex = 101
+	
+	local headerCorner = Instance.new("UICorner", headerFrame)
+	headerCorner.CornerRadius = UDim.new(0, 4)
+	
+	local headerGradient = Instance.new("UIGradient", headerFrame)
+	headerGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(91, 133, 197)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 100, 150))
+	})
+	headerGradient.Rotation = 90
+	
+	--[TITLE LABEL]--
+	local titleLabel = Instance.new("TextLabel", headerFrame)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.BorderSizePixel = 0
+	titleLabel.Position = UDim2.new(0, 10, 0, 0)
+	titleLabel.Size = UDim2.new(0.7, -10, 1, 0)
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.Text = Title
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	titleLabel.TextSize = 14
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+	titleLabel.ZIndex = 102
+	
+	--[COUNT LABEL]--
+	local countLabel = Instance.new("TextLabel", headerFrame)
+	countLabel.BackgroundTransparency = 1
+	countLabel.BorderSizePixel = 0
+	countLabel.Position = UDim2.new(0.7, 0, 0, 0)
+	countLabel.Size = UDim2.new(0.3, -10, 1, 0)
+	countLabel.Font = Enum.Font.GothamBold
+	countLabel.Text = "[0]"
+	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	countLabel.TextSize = 12
+	countLabel.TextXAlignment = Enum.TextXAlignment.Right
+	countLabel.TextYAlignment = Enum.TextYAlignment.Center
+	countLabel.ZIndex = 102
+	
+	--[SCROLL FRAME]--
+	local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
+	scrollFrame.BackgroundTransparency = 1
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.Position = UDim2.new(0, 0, 0, 30)
+	scrollFrame.Size = UDim2.new(1, 0, 1, -30)
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.ScrollBarThickness = 4
+	scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(91, 133, 197)
+	scrollFrame.ZIndex = 101
+	
+	--[LIST LAYOUT]--
+	local listLayout = Instance.new("UIListLayout", scrollFrame)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Padding = UDim.new(0, 2)
+	
+	-- Draggable yapma
+	draggable(mainFrame)
+	
+	-- Entry oluşturma fonksiyonu
+	local function createEntryFrame(key, data)
+		local entryFrame = Instance.new("Frame")
+		entryFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		entryFrame.BorderSizePixel = 0
+		entryFrame.Size = UDim2.new(1, -10, 0, 25)
+		entryFrame.ZIndex = 102
+		entryFrame.Name = key
+		
+		local entryCorner = Instance.new("UICorner", entryFrame)
+		entryCorner.CornerRadius = UDim.new(0, 3)
+		
+		-- Status dot
+		local statusDot = Instance.new("Frame", entryFrame)
+		statusDot.BackgroundColor3 = data.Online and Color3.fromRGB(80, 220, 120) or Color3.fromRGB(150, 150, 150)
+		statusDot.BorderSizePixel = 0
+		statusDot.Position = UDim2.new(0, 8, 0.5, -3)
+		statusDot.Size = UDim2.new(0, 6, 0, 6)
+		statusDot.ZIndex = 103
+		
+		local dotCorner = Instance.new("UICorner", statusDot)
+		dotCorner.CornerRadius = UDim.new(1, 0)
+		
+		-- Name label
+		local nameLabel = Instance.new("TextLabel", entryFrame)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.BorderSizePixel = 0
+		nameLabel.Position = UDim2.new(0, 20, 0, 0)
+		nameLabel.Size = UDim2.new(0.6, -20, 1, 0)
+		nameLabel.Font = Enum.Font.Gotham
+		nameLabel.Text = data.Name
+		nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+		nameLabel.TextSize = 11
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+		nameLabel.ZIndex = 103
+		
+		-- Tag label (opsiyonel)
+		if data.Tag then
+			local tagLabel = Instance.new("TextLabel", entryFrame)
+			tagLabel.BackgroundColor3 = Color3.fromRGB(91, 133, 197)
+			tagLabel.BorderSizePixel = 0
+			tagLabel.Position = UDim2.new(0.6, 0, 0.5, -8)
+			tagLabel.Size = UDim2.new(0.35, -10, 0, 16)
+			tagLabel.Font = Enum.Font.GothamBold
+			tagLabel.Text = data.Tag
+			tagLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			tagLabel.TextSize = 9
+			tagLabel.TextXAlignment = Enum.TextXAlignment.Center
+			tagLabel.TextYAlignment = Enum.TextYAlignment.Center
+			tagLabel.ZIndex = 103
+			
+			local tagCorner = Instance.new("UICorner", tagLabel)
+			tagCorner.CornerRadius = UDim.new(0, 3)
+		end
+		
+		return entryFrame
+	end
+	
+	-- Liste güncelleme
+	local function updateList()
+		-- Mevcut entry'leri temizle
+		for _, child in ipairs(scrollFrame:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+		
+		-- Sıralı entry'leri oluştur
+		sortedEntries = {}
+		for key, data in pairs(entries) do
+			table.insert(sortedEntries, {Key = key, Data = data})
+		end
+		
+		-- Alfabetik sırala
+		table.sort(sortedEntries, function(a, b)
+			return a.Data.Name < b.Data.Name
+		end)
+		
+		-- Entry'leri oluştur
+		for i, entry in ipairs(sortedEntries) do
+			if i <= MaxEntries then
+				local frame = createEntryFrame(entry.Key, entry.Data)
+				frame.Parent = scrollFrame
+				frame.LayoutOrder = i
+			end
+		end
+		
+		-- Canvas boyutunu güncelle
+		local contentHeight = #sortedEntries * 27
+		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+		
+		-- Count güncelle
+		countLabel.Text = string.format("[%d]", #sortedEntries)
+		
+		-- Frame boyutunu dinamik ayarla
+		local visibleEntries = math.min(#sortedEntries, MaxEntries)
+		local newHeight = 30 + (visibleEntries * 27) + 10
+		TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 220, 0, newHeight)
+		}):Play()
+	end
+	
+	-- API Functions
+	function list:Add(key, name, tag, online)
+		entries[key] = {
+			Name = name,
+			Tag = tag,
+			Online = online ~= false
+		}
+		updateList()
+	end
+	
+	function list:Update(key, online, tag)
+		if entries[key] then
+			if online ~= nil then
+				entries[key].Online = online
+			end
+			if tag ~= nil then
+				entries[key].Tag = tag
+			end
+			updateList()
+		end
+	end
+	
+	function list:Remove(key)
+		entries[key] = nil
+		updateList()
+	end
+	
+	function list:Clear()
+		entries = {}
+		updateList()
+	end
+	
+	function list:SetVisible(visible)
+		if visible then
+			mainFrame.Visible = true
+			-- Fade in
+			mainFrame.BackgroundTransparency = 1
+			borderStroke.Transparency = 1
+			if EnableShadow and shadowFrame then
+				shadowFrame.BackgroundTransparency = 1
+			end
+			
+			TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				BackgroundTransparency = 0
+			}):Play()
+			TweenService:Create(borderStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Transparency = 0
+			}):Play()
+			if EnableShadow and shadowFrame then
+				TweenService:Create(shadowFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					BackgroundTransparency = 0.7
+				}):Play()
+			end
+		else
+			-- Fade out
+			TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				BackgroundTransparency = 1
+			}):Play()
+			TweenService:Create(borderStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Transparency = 1
+			}):Play()
+			if EnableShadow and shadowFrame then
+				TweenService:Create(shadowFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					BackgroundTransparency = 1
+				}):Play()
+			end
+			
+			task.delay(0.3, function()
+				mainFrame.Visible = false
+			end)
+		end
+	end
+	
+	function list:Toggle()
+		list:SetVisible(not mainFrame.Visible)
+	end
+	
+	function list:SetPosition(pos)
+		TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, pos.X, 0, pos.Y)
+		}):Play()
+	end
+	
+	function list:Destroy()
+		mainFrame:Destroy()
+	end
+	
+	-- İlk güncelleme
+	updateList()
+	
+	return list
+end
+
 local NotifyGui = nil
 local NotifyHolder = nil
 local function getNotifyHolder()
