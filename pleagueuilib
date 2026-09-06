@@ -988,84 +988,105 @@ function library:Notify(titleOrConfig, text, duration)
 	local holder = getNotifyHolder()
 	if not holder then return end
 
+	local barColor = (type(titleOrConfig) == "table" and (titleOrConfig.Color or titleOrConfig.AccentColor)) or Color3.fromRGB(91, 133, 197)
+
+	-- Dış kart (boşluk placeholder için)
 	local Card = Instance.new("Frame")
 	Card.Name = "NotifyCard"
 	Card.Parent = holder
-	Card.Size = UDim2.new(1, 0, 0, 42)
+	Card.Size = UDim2.new(1, 0, 0, 52)
 	Card.BackgroundTransparency = 1
 	Card.BorderSizePixel = 0
 	Card.ClipsDescendants = false
 	Card.ZIndex = 1000
 
+	-- İç kart (görünür kısım) – başlangıçta sağ dışarıda
 	local Inner = Instance.new("Frame")
 	Inner.Name = "Inner"
 	Inner.Parent = Card
 	Inner.Size = UDim2.new(1, 0, 1, 0)
-	Inner.Position = UDim2.new(-1, -40, 0, 0)
-	Inner.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+	Inner.Position = UDim2.new(1, 60, 0, 0)   -- sağdan gelecek
+	Inner.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
 	Inner.BorderSizePixel = 0
 	Inner.ClipsDescendants = true
 	Inner.ZIndex = 1001
 
+	-- Köşe yuvarlama
 	local CardCorner = Instance.new("UICorner")
-	CardCorner.CornerRadius = UDim.new(0, 4)
+	CardCorner.CornerRadius = UDim.new(0, 6)
 	CardCorner.Parent = Inner
 
+	-- Dış kenarlık (glow efekti)
 	local CardStroke = Instance.new("UIStroke")
 	CardStroke.Parent = Inner
-	CardStroke.Color = Color3.fromRGB(55, 55, 55)
+	CardStroke.Color = barColor
 	CardStroke.Thickness = 1
-	local barColor = (type(titleOrConfig) == "table" and (titleOrConfig.Color or titleOrConfig.AccentColor)) or Color3.fromRGB(91, 133, 197)
+	CardStroke.Transparency = 0.65
 
+	-- Sol accent şeridi (4px, daha belirgin)
 	local Accent = Instance.new("Frame")
 	Accent.Name = "Accent"
 	Accent.Parent = Inner
 	Accent.BackgroundColor3 = barColor
 	Accent.BorderSizePixel = 0
 	Accent.Position = UDim2.new(0, 0, 0, 0)
-	Accent.Size = UDim2.new(0, 3, 1, 0)
+	Accent.Size = UDim2.new(0, 4, 1, 0)
 	Accent.ZIndex = 1002
 
+	-- Accent köşe yuvarlama
+	local AccentCorner = Instance.new("UICorner")
+	AccentCorner.CornerRadius = UDim.new(0, 3)
+	AccentCorner.Parent = Accent
+
+	-- Hafif gradient overlay (üstten alta açık → koyu)
+	local Gradient = Instance.new("UIGradient")
+	Gradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 35, 40)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(18, 18, 20))
+	}
+	Gradient.Rotation = 90
+	Gradient.Parent = Inner
+
+	-- Başlık
 	local TitleLabel = Instance.new("TextLabel")
 	TitleLabel.Name = "Title"
 	TitleLabel.Parent = Inner
 	TitleLabel.BackgroundTransparency = 1
-	TitleLabel.Position = UDim2.new(0, 10, 0, 3)
-	TitleLabel.Size = UDim2.new(1, -16, 0, 16)
-	TitleLabel.Font = Enum.Font.SourceSansBold
+	TitleLabel.Position = UDim2.new(0, 13, 0, 5)
+	TitleLabel.Size = UDim2.new(1, -18, 0, 18)
+	TitleLabel.Font = Enum.Font.GothamBold
 	TitleLabel.Text = title
 	TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	TitleLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	TitleLabel.TextStrokeTransparency = 0.6
-	TitleLabel.TextSize = 14
+	TitleLabel.TextSize = 13
 	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	TitleLabel.ZIndex = 1002
+	TitleLabel.ZIndex = 1003
 
+	-- Açıklama
 	local DescLabel = Instance.new("TextLabel")
 	DescLabel.Name = "Desc"
 	DescLabel.Parent = Inner
 	DescLabel.BackgroundTransparency = 1
-	DescLabel.Position = UDim2.new(0, 10, 0, 19)
-	DescLabel.Size = UDim2.new(1, -16, 0, 16)
-	DescLabel.Font = Enum.Font.SourceSansBold
+	DescLabel.Position = UDim2.new(0, 13, 0, 24)
+	DescLabel.Size = UDim2.new(1, -18, 0, 20)
+	DescLabel.Font = Enum.Font.Gotham
 	DescLabel.Text = desc
-	DescLabel.TextColor3 = Color3.fromRGB(220, 225, 235)
-	DescLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	DescLabel.TextStrokeTransparency = 0.7
-	DescLabel.TextSize = 13
+	DescLabel.TextColor3 = Color3.fromRGB(185, 190, 200)
+	DescLabel.TextSize = 12
 	DescLabel.TextXAlignment = Enum.TextXAlignment.Left
 	DescLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	DescLabel.ZIndex = 1002
+	DescLabel.ZIndex = 1003
 
+	-- Progress bar arka plan
 	local BarBG = Instance.new("Frame")
 	BarBG.Name = "BarBG"
 	BarBG.Parent = Inner
-	BarBG.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	BarBG.BackgroundColor3 = Color3.fromRGB(30, 30, 33)
 	BarBG.BorderSizePixel = 0
-	BarBG.Position = UDim2.new(0, 0, 1, -2)
-	BarBG.Size = UDim2.new(1, 0, 0, 2)
+	BarBG.Position = UDim2.new(0, 0, 1, -3)
+	BarBG.Size = UDim2.new(1, 0, 0, 3)
 	BarBG.ZIndex = 1002
 
+	-- Progress bar dolgu
 	local Bar = Instance.new("Frame")
 	Bar.Name = "Bar"
 	Bar.Parent = BarBG
@@ -1075,6 +1096,7 @@ function library:Notify(titleOrConfig, text, duration)
 	Bar.Size = UDim2.new(1, 0, 1, 0)
 	Bar.ZIndex = 1003
 
+	-- Tıklama butonu (kapatmak için)
 	local ClickBtn = Instance.new("TextButton")
 	ClickBtn.Name = "ClickBtn"
 	ClickBtn.Parent = Inner
@@ -1088,8 +1110,13 @@ function library:Notify(titleOrConfig, text, duration)
 		if closed then return end
 		closed = true
 		pcall(function()
-			TweenService:Create(Inner, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(-1, -40, 0, 0) }):Play()
-			TweenService:Create(Card, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = UDim2.new(1, 0, 0, 0) }):Play()
+			-- Sağa doğru kayarak çıkar
+			TweenService:Create(Inner, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = UDim2.new(1, 60, 0, 0)
+			}):Play()
+			TweenService:Create(Card, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Size = UDim2.new(1, 0, 0, 0)
+			}):Play()
 		end)
 		task.delay(0.25, function()
 			pcall(function() Card:Destroy() end)
@@ -1098,14 +1125,36 @@ function library:Notify(titleOrConfig, text, duration)
 
 	ClickBtn.MouseButton1Click:Connect(closeCard)
 
+	-- Hover: stroke parlar
+	ClickBtn.MouseEnter:Connect(function()
+		pcall(function()
+			TweenService:Create(CardStroke, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Transparency = 0.3
+			}):Play()
+		end)
+	end)
+	ClickBtn.MouseLeave:Connect(function()
+		pcall(function()
+			TweenService:Create(CardStroke, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Transparency = 0.65
+			}):Play()
+		end)
+	end)
+
+	-- Sağdan içeri kayarak gir
 	pcall(function()
-		TweenService:Create(Inner, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(0, 0, 0, 0) }):Play()
-		TweenService:Create(Bar, TweenInfo.new(dur, Enum.EasingStyle.Linear, Enum.EasingDirection.In), { Size = UDim2.new(0, 0, 1, 0) }):Play()
+		TweenService:Create(Inner, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 0)
+		}):Play()
+		TweenService:Create(Bar, TweenInfo.new(dur, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
+			Size = UDim2.new(0, 0, 1, 0)
+		}):Play()
 	end)
 
 	task.delay(dur, closeCard)
 end
 library.Notification = library.Notify
+
 
 --====================================================================--
 --                        KEYBINDS UI MODULE                          --
@@ -2581,7 +2630,7 @@ function library:AddWindow(text)
 			UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(180, 180, 180))}
 			UIGradient.Parent = UIStroke
 
-			local function SetState(state, doCallback)
+			local function SetState(state, doCallback, source)
 				activated = state
 				if kbEntry then
 					kbEntry:SetState(activated)
@@ -2594,7 +2643,8 @@ function library:AddWindow(text)
 					TweenService:Create(TextLabel, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(84, 84, 84)}):Play()
 				end
 
-				if doCallback and library.KeybindNotifications then
+				-- Bildirim sadece keybind kaynağından geldiğinde gönderilir (UI tıklamasında gönderilmez)
+				if doCallback and library.KeybindNotifications and source == "keybind" then
 					pcall(function()
 						local keyTag = ""
 						if keybind then
@@ -2628,8 +2678,8 @@ function library:AddWindow(text)
 				end
 			end
 
-			local function Toggle()
-				SetState(not activated, true)
+			local function Toggle(source)
+				SetState(not activated, true, source or "ui")
 			end
 
 			TemplateToggle.Name = "TemplateToggle"
@@ -2717,7 +2767,7 @@ function library:AddWindow(text)
 						end
 						if matchesKey and ischanging == false then 
 							pcall(function()
-								Toggle()
+								Toggle("keybind")
 							end)
 						end
 					end
