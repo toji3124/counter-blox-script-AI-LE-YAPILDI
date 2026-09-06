@@ -2089,16 +2089,16 @@ function library:ResetAllWarnings()
 end
 
 function library:ShowWarning(config)
-	local title      = config.Title or config.title or "UYARI"
-	local text       = config.Text or config.text or config.Message or "Emin misiniz?"
-	local confirmTxt = config.ConfirmText or "Onayla"
-	local cancelTxt  = config.CancelText or "İptal"
+	local title      = config.Title or config.title or "WARNING"
+	local text       = config.Text or config.text or config.Message or "Are you sure?"
+	local confirmTxt = config.ConfirmText or "Confirm"
+	local cancelTxt  = config.CancelText or "Cancel"
 	local onConfirm  = config.OnConfirm
 	local onCancel   = config.OnCancel
 	local warningKey = config.Key or config.key or config.Id or config.id or title
 	local showDismiss= config.ShowDontShowAgain ~= false -- varsayılan olarak true
 
-	-- Eğer bu uyarı daha önce "Bir daha gösterme" olarak işaretlendiyse doğrudan onayla
+	-- If this warning was previously marked as "Don't show again", directly confirm
 	if warningKey and library.DismissedWarnings[warningKey] then
 		if onConfirm then pcall(onConfirm) end
 		return true
@@ -2260,7 +2260,7 @@ function library:ShowWarning(config)
 	DescLabel.ZIndex = 2503
 	DescLabel.TextTransparency = 1
 
-	-- ── "Bir Daha Gösterme" Kutusu ─────────────────────────────────
+	-- ── "Don't Show Again" Checkbox ─────────────────────────────────
 	local isDismissChecked = false
 	local DismissHolder = Instance.new("Frame")
 	DismissHolder.Name = "DismissHolder"
@@ -2310,7 +2310,7 @@ function library:ShowWarning(config)
 	CheckLabel.Position = UDim2.new(0, 24, 0, 0)
 	CheckLabel.Size = UDim2.new(1, -24, 1, 0)
 	CheckLabel.Font = Enum.Font.SourceSans
-	CheckLabel.Text = "Bu uyarıyı bir daha gösterme"
+	CheckLabel.Text = "Don't show this warning again"
 	CheckLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 	CheckLabel.TextSize = 13
 	CheckLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -2341,7 +2341,7 @@ function library:ShowWarning(config)
 	BtnHolder.Size = UDim2.new(1, -20, 0, 32)
 	BtnHolder.ZIndex = 2502
 
-	-- İptal Butonu (Plague UI gri buton)
+	-- Cancel Button (Plague UI grey button)
 	local CancelBtn = Instance.new("TextButton")
 	CancelBtn.Parent = BtnHolder
 	CancelBtn.Size = UDim2.new(0.5, -5, 1, 0)
@@ -3320,6 +3320,11 @@ function library:Init(name)
             end
         end
     end
+    
+    -- Custom mouse'u otomatik başlat (opsiyonel, varsayılan: kapalı)
+    if library.AutoEnableCustomMouse == true then
+        library:SetCustomMouse(true)
+    end
 end
 
 function library:AddWindow(text)
@@ -4195,16 +4200,16 @@ function library:AddWindow(text)
 					if not library.DismissedWarnings[wKey] then
 						library:ShowWarning({
 							Key = wKey,
-							Title = WarningConfig.Title or WarningConfig.title or (Text .. " Uyarısı"),
-							Text = WarningConfig.Text or WarningConfig.text or WarningConfig.Message or "Bu özelliği açmak istediğinize emin misiniz?",
-							ConfirmText = WarningConfig.ConfirmText or "Aç",
-							CancelText = WarningConfig.CancelText or "Vazgeç",
+							Title = WarningConfig.Title or WarningConfig.title or (Text .. " Warning"),
+							Text = WarningConfig.Text or WarningConfig.text or WarningConfig.Message or "Are you sure you want to enable this feature?",
+							ConfirmText = WarningConfig.ConfirmText or "Enable",
+							CancelText = WarningConfig.CancelText or "Cancel",
 							ShowDontShowAgain = WarningConfig.ShowDontShowAgain ~= false,
 							OnConfirm = function()
 								SetState(true, true, source or "ui")
 							end,
 							OnCancel = function()
-								-- İptal edildi, toggle kapalı kalır
+								-- Cancelled, toggle stays off
 							end
 						})
 						return
@@ -4967,5 +4972,91 @@ spawn(function()
 	RunService.Heartbeat:Connect(HeartbeatUpdate)
 end)
 library.GUI = PCR_1 
+
+-- Custom Mouse Settings
+library.AutoEnableCustomMouse = false  -- Varsayılan: kapalı (UI açılınca otomatik başlatma)
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- CUSTOM MOUSE CURSOR SYSTEM
+-- ════════════════════════════════════════════════════════════════════════════
+
+library.CustomMouse = {
+	Enabled = false,
+	Frame = nil,
+	Connection = nil
+}
+
+function library:SetCustomMouse(enabled)
+	library.CustomMouse.Enabled = enabled
+	
+	if enabled then
+		-- Custom mouse'u oluştur
+		if not library.CustomMouse.Frame then
+			local MouseFrame = Instance.new("ImageLabel")
+			MouseFrame.Name = "CustomMouse"
+			MouseFrame.Parent = PCR_OVERLAY
+			MouseFrame.BackgroundTransparency = 1
+			MouseFrame.Size = UDim2.new(0, 20, 0, 20)
+			MouseFrame.ZIndex = 10000
+			MouseFrame.Image = "rbxassetid://15641596501"  -- Modern cursor icon
+			MouseFrame.ImageColor3 = Color3.fromRGB(91, 133, 197)  -- Accent color
+			
+			library.CustomMouse.Frame = MouseFrame
+		end
+		
+		-- Mouse pozisyonunu takip et
+		if not library.CustomMouse.Connection then
+			library.CustomMouse.Connection = RunService.RenderStepped:Connect(function()
+				if library.CustomMouse.Frame and library.CustomMouse.Enabled then
+					local mousePos = uis:GetMouseLocation()
+					library.CustomMouse.Frame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
+					library.CustomMouse.Frame.Visible = true
+				end
+			end)
+		end
+		
+		-- Roblox mouse'u gizle
+		pcall(function()
+			uis.MouseIconEnabled = false
+		end)
+		
+		if library.CustomMouse.Frame then
+			library.CustomMouse.Frame.Visible = true
+		end
+	else
+		-- Custom mouse'u kapat
+		if library.CustomMouse.Connection then
+			library.CustomMouse.Connection:Disconnect()
+			library.CustomMouse.Connection = nil
+		end
+		
+		if library.CustomMouse.Frame then
+			library.CustomMouse.Frame.Visible = false
+		end
+		
+		-- Roblox mouse'u göster
+		pcall(function()
+			uis.MouseIconEnabled = true
+		end)
+	end
+end
+
+function library:SetCustomMouseIcon(assetId)
+	if library.CustomMouse.Frame then
+		library.CustomMouse.Frame.Image = "rbxassetid://" .. tostring(assetId)
+	end
+end
+
+function library:SetCustomMouseColor(color)
+	if library.CustomMouse.Frame then
+		library.CustomMouse.Frame.ImageColor3 = color
+	end
+end
+
+function library:SetCustomMouseSize(size)
+	if library.CustomMouse.Frame then
+		library.CustomMouse.Frame.Size = UDim2.new(0, size, 0, size)
+	end
+end
 
 return library
