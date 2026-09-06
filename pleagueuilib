@@ -1780,7 +1780,7 @@ end
 --====================================================================--
 
 local function formatKeyName(key)
-	if not key then return "None" end
+	if not key or key == "" or key == false then return "None" end
 	local name = tostring(key)
 	if typeof(key) == "EnumItem" then
 		name = key.Name
@@ -1798,6 +1798,9 @@ local function formatKeyName(key)
 		["MouseButton1"] = "MB1",
 		["MouseButton2"] = "MB2",
 		["MouseButton3"] = "MB3",
+		["MB1"] = "MB1",
+		["MB2"] = "MB2",
+		["MB3"] = "MB3",
 		["LeftBracket"] = "[",
 		["RightBracket"] = "]",
 		["Backquote"] = "`",
@@ -1810,6 +1813,39 @@ local function formatKeyName(key)
 		["Unknown"] = "None"
 	}
 	return shortcuts[name] or name
+end
+
+local function inputMatches(inputObj, boundKey)
+	if not boundKey or boundKey == "None" or boundKey == Enum.KeyCode.Unknown then
+		return false
+	end
+	if typeof(boundKey) == "EnumItem" then
+		if inputObj.KeyCode == boundKey or inputObj.UserInputType == boundKey then
+			return true
+		end
+		if inputObj.KeyCode ~= Enum.KeyCode.Unknown and inputObj.KeyCode.Name == boundKey.Name then
+			return true
+		end
+		if inputObj.UserInputType.Name == boundKey.Name then
+			return true
+		end
+	end
+	local boundStr = tostring(boundKey)
+	local parts = string.split(boundStr, ".")
+	local rawName = parts[#parts]
+	local formattedBound = formatKeyName(boundKey)
+
+	if inputObj.KeyCode ~= Enum.KeyCode.Unknown then
+		if inputObj.KeyCode.Name == rawName or formatKeyName(inputObj.KeyCode) == formattedBound or formatKeyName(inputObj.KeyCode) == boundStr then
+			return true
+		end
+	end
+
+	if inputObj.UserInputType.Name == rawName or formatKeyName(inputObj.UserInputType) == formattedBound or formatKeyName(inputObj.UserInputType) == boundStr then
+		return true
+	end
+
+	return false
 end
 
 local KeybindsModule = {
@@ -3383,9 +3419,9 @@ function library:AddWindow(text)
 			KeyButton.AutoButtonColor = false
 			KeyButton.Font = Enum.Font.ArialBold
 			if keybind then
-				KeyButton.Text = keybind.Name or '. . .'
+				KeyButton.Text = formatKeyName(keybind)
 			else
-				KeyButton.Text ='. . .'
+				KeyButton.Text = '. . .'
 			end
 			KeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 			KeyButton.TextSize = 10.000
@@ -3401,13 +3437,7 @@ function library:AddWindow(text)
 				local KeyCode = keybind
 				game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
 					if not gp then 
-						local matchesKey = false
-						if typeof(KeyCode) == "EnumItem" then
-							matchesKey = (a.KeyCode == KeyCode or a.KeyCode.Name == KeyCode.Name)
-						else
-							matchesKey = (a.KeyCode.Name == tostring(KeyCode))
-						end
-						if matchesKey and ischanging == false then 
+						if inputMatches(a, KeyCode) and ischanging == false then 
 							pcall(function()
 								Toggle("keybind")
 							end)
@@ -3422,23 +3452,31 @@ function library:AddWindow(text)
 					KeyButton.Text = ". . ."
 					KeyButton:TweenSize(UDim2.new(0,getsize(KeyButton.Text),0,13), "InOut", "Quint", 0.2, true)
 
-					local v1, v2 = game:GetService('UserInputService').InputBegan:wait();
-					if v1.KeyCode.Name ~= "Unknown" then
+					local v1 = game:GetService('UserInputService').InputBegan:wait();
+					-- Klavye veya fare tuşu - ikisini de kabul et
+					local newKey
+					if v1.KeyCode ~= Enum.KeyCode.Unknown then
+						newKey = v1.KeyCode
+					elseif v1.UserInputType ~= Enum.UserInputType.MouseMovement then
+						newKey = v1.UserInputType
+					end
+					if newKey then
 						ischanging = true
+						KeyCode = newKey
+						local displayName = formatKeyName(newKey)
 						game.TweenService:Create(KeyButton, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
 							BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 						}):Play()
-						KeyButton:TweenSize(UDim2.new(0,getsize( v1.KeyCode.Name),0,13), "Out", "Quint", 0.3, true)
-						KeyButton.Text = v1.KeyCode.Name
-						KeyCode = v1.KeyCode.Name;
+						KeyButton:TweenSize(UDim2.new(0,getsize(displayName),0,13), "Out", "Quint", 0.3, true)
+						KeyButton.Text = displayName
 						if kbEntry then
-							kbEntry:SetKey(v1.KeyCode)
+							kbEntry:SetKey(newKey)
 						end
 						if library.KeybindNotifications then
 							pcall(function()
 								library:Notify({
 									Title = Text,
-									Text = "Tuş Atandı -> [" .. formatKeyName(v1.KeyCode) .. "]",
+									Text = "Tuş Atandı -> [" .. displayName .. "]",
 									Duration = 1.8,
 									Color = Color3.fromRGB(91, 133, 197)
 								})
@@ -3642,7 +3680,7 @@ function library:AddWindow(text)
 			KeyButton.ZIndex = 55
 			KeyButton.AutoButtonColor = false
 			KeyButton.Font = Enum.Font.ArialBold
-			KeyButton.Text = (typeof(KeyCode) == "EnumItem" and KeyCode.Name) or tostring(KeyCode)
+			KeyButton.Text = formatKeyName(KeyCode)
 			KeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 			KeyButton.TextSize = 10.000
 			KeyButton.TextStrokeColor3 = Color3.fromRGB(45, 45, 45)
@@ -3654,13 +3692,7 @@ function library:AddWindow(text)
 			local ischanging = false;
 			game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
 				if not gp then 
-					local matches = false
-					if typeof(KeyCode) == "EnumItem" then
-						matches = (a.KeyCode == KeyCode or a.KeyCode.Name == KeyCode.Name)
-					else
-						matches = (a.KeyCode.Name == tostring(KeyCode))
-					end
-					if matches and ischanging == false then 
+					if inputMatches(a, KeyCode) and ischanging == false then 
 						if kbEntry then
 							kbEntry:SetState(true)
 							task.delay(0.25, function()
@@ -3678,7 +3710,7 @@ function library:AddWindow(text)
 							end)
 						end
 						pcall(function()
-							Action(a.KeyCode)
+							Action(a.KeyCode ~= Enum.KeyCode.Unknown and a.KeyCode or a.UserInputType)
 						end)
 					end
 				end
@@ -3691,23 +3723,31 @@ function library:AddWindow(text)
 				KeyButton.Text = ". . ."
 				KeyButton:TweenSize(UDim2.new(0,getsize(KeyButton.Text),0,13), "InOut", "Quint", 0.2, true)
 
-				local v1, v2 = game:GetService('UserInputService').InputBegan:wait();
-				if v1.KeyCode.Name ~= "Unknown" then
+				local v1 = game:GetService('UserInputService').InputBegan:wait();
+				-- Klavye veya fare tuşu - ikisini de kabul et
+				local newKey
+				if v1.KeyCode ~= Enum.KeyCode.Unknown then
+					newKey = v1.KeyCode
+				elseif v1.UserInputType ~= Enum.UserInputType.MouseMovement then
+					newKey = v1.UserInputType
+				end
+				if newKey then
 					ischanging = true
+					KeyCode = newKey
+					local displayName = formatKeyName(newKey)
 					game.TweenService:Create(KeyButton, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
 						BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 					}):Play()
-					KeyButton:TweenSize(UDim2.new(0,getsize( v1.KeyCode.Name),0,13), "Out", "Quint", 0.3, true)
-					KeyButton.Text = v1.KeyCode.Name
-					KeyCode = v1.KeyCode.Name;
+					KeyButton:TweenSize(UDim2.new(0,getsize(displayName),0,13), "Out", "Quint", 0.3, true)
+					KeyButton.Text = displayName
 					if kbEntry then
-						kbEntry:SetKey(v1.KeyCode)
+						kbEntry:SetKey(newKey)
 					end
 					if library.KeybindNotifications then
 						pcall(function()
 							library:Notify({
 								Title = Text,
-								Text = "Tuş Atandı -> [" .. formatKeyName(v1.KeyCode) .. "]",
+								Text = "Tuş Atandı -> [" .. displayName .. "]",
 								Duration = 1.8,
 								Color = Color3.fromRGB(91, 133, 197)
 							})
