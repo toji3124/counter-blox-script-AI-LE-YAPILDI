@@ -866,7 +866,7 @@ function library:AddWatermark(Text, Options)
 	local obj1 = Instance.new("Frame")
 	obj1.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 	obj1.BorderSizePixel = 0
-	obj1.Size = UDim2.new(0, 250, 0, ShowGame and 50 or 36) -- Oyun gösteriliyorsa daha yüksek
+	obj1.Size = UDim2.new(0, 400, 0, 28) -- Yatay ve tek satır
 	obj1.ZIndex = 100
 	obj1.Name = "WatermarkMain"
 	obj1.Visible = StartVisible
@@ -920,15 +920,32 @@ function library:AddWatermark(Text, Options)
 	local titleLabel = Instance.new("TextLabel", obj3)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.BorderSizePixel = 0
-	titleLabel.Position = UDim2.new(0, 8, 0, 2)
-	titleLabel.Size = UDim2.new(1, -16, 0, 16)
+	titleLabel.Position = UDim2.new(0, 8, 0, 0)
+	titleLabel.Size = UDim2.new(0, 120, 1, 0)
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.Text = Text
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.TextSize = 14
+	titleLabel.TextSize = 13
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.TextStrokeTransparency = 1
+	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
 	titleLabel.ZIndex = 102
+	
+	--[SEPARATOR 1]--
+	local sep1
+	if ShowGame then
+		sep1 = Instance.new("TextLabel", obj3)
+		sep1.BackgroundTransparency = 1
+		sep1.BorderSizePixel = 0
+		sep1.Position = UDim2.new(0, 132, 0, 0)
+		sep1.Size = UDim2.new(0, 10, 1, 0)
+		sep1.Font = Enum.Font.Gotham
+		sep1.Text = "|"
+		sep1.TextColor3 = Color3.fromRGB(91, 133, 197)
+		sep1.TextSize = 12
+		sep1.TextXAlignment = Enum.TextXAlignment.Center
+		sep1.TextYAlignment = Enum.TextYAlignment.Center
+		sep1.ZIndex = 102
+	end
 	
 	--[GAME LABEL]--
 	local gameLabel
@@ -936,14 +953,14 @@ function library:AddWatermark(Text, Options)
 		gameLabel = Instance.new("TextLabel", obj3)
 		gameLabel.BackgroundTransparency = 1
 		gameLabel.BorderSizePixel = 0
-		gameLabel.Position = UDim2.new(0, 8, 0, 18)
-		gameLabel.Size = UDim2.new(1, -16, 0, 12)
+		gameLabel.Position = UDim2.new(0, 145, 0, 0)
+		gameLabel.Size = UDim2.new(0, 120, 1, 0)
 		gameLabel.Font = Enum.Font.GothamSemibold
-		gameLabel.Text = " " .. gameName
+		gameLabel.Text = gameName
 		gameLabel.TextColor3 = Color3.fromRGB(91, 133, 197)
 		gameLabel.TextSize = 11
 		gameLabel.TextXAlignment = Enum.TextXAlignment.Left
-		gameLabel.TextStrokeTransparency = 1
+		gameLabel.TextYAlignment = Enum.TextYAlignment.Center
 		gameLabel.ZIndex = 102
 	end
 	
@@ -951,14 +968,14 @@ function library:AddWatermark(Text, Options)
 	local infoLabel = Instance.new("TextLabel", obj3)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.BorderSizePixel = 0
-	infoLabel.Position = UDim2.new(0, 8, 0, ShowGame and 32 or 18)
-	infoLabel.Size = UDim2.new(1, -16, 0, 14)
+	infoLabel.Position = UDim2.new(1, -135, 0, 0)
+	infoLabel.Size = UDim2.new(0, 130, 1, 0)
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.Text = ""
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	infoLabel.TextSize = 12
-	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-	infoLabel.TextStrokeTransparency = 1
+	infoLabel.TextSize = 11
+	infoLabel.TextXAlignment = Enum.TextXAlignment.Right
+	infoLabel.TextYAlignment = Enum.TextYAlignment.Center
 	infoLabel.ZIndex = 102
 	
 	--[ACCENT BAR]--
@@ -994,42 +1011,33 @@ function library:AddWatermark(Text, Options)
 		local infoText = {}
 		
 		if ShowFPS then
-			local fpsColor = fps >= 60 and "✓" or (fps >= 30 and "⚠" or "✗")
-			table.insert(infoText, string.format("%s FPS: %d", fpsColor, fps))
+			table.insert(infoText, string.format("FPS: %d", fps))
 		end
 		
 		if ShowPing then
 			pcall(function()
 				local pingStr = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
 				ping = tonumber(pingStr:match("(%d+)")) or 0
-				local pingColor = ping < 100 and "✓" or (ping < 200 and "⚠" or "✗")
-				table.insert(infoText, string.format("%s Ping: %dms", pingColor, ping))
+				table.insert(infoText, string.format("Ping: %dms", ping))
 			end)
 		end
 		
 		infoLabel.Text = table.concat(infoText, "  |  ")
 		
-		-- Dinamik boyut ayarlama
-		local maxWidth = titleLabel.Text
+		-- Dinamik boyut ayarlama (yatay)
+		local titleWidth = game:GetService("TextService"):GetTextSize(titleLabel.Text, titleLabel.TextSize, titleLabel.Font, Vector2.new(1000, 20)).X
+		local infoWidth = game:GetService("TextService"):GetTextSize(infoLabel.Text, infoLabel.TextSize, infoLabel.Font, Vector2.new(1000, 20)).X
+		
+		local totalWidth = titleWidth + infoWidth + 40 -- padding
 		if ShowGame and gameLabel then
-			local gameTextWidth = game:GetService("TextService"):GetTextSize(gameLabel.Text, gameLabel.TextSize, gameLabel.Font, Vector2.new(1000, 20)).X
-			maxWidth = math.max(
-				game:GetService("TextService"):GetTextSize(titleLabel.Text, titleLabel.TextSize, titleLabel.Font, Vector2.new(1000, 20)).X,
-				gameTextWidth,
-				game:GetService("TextService"):GetTextSize(infoLabel.Text, infoLabel.TextSize, infoLabel.Font, Vector2.new(1000, 20)).X
-			)
-		else
-			maxWidth = math.max(
-				game:GetService("TextService"):GetTextSize(titleLabel.Text, titleLabel.TextSize, titleLabel.Font, Vector2.new(1000, 20)).X,
-				game:GetService("TextService"):GetTextSize(infoLabel.Text, infoLabel.TextSize, infoLabel.Font, Vector2.new(1000, 20)).X
-			)
+			local gameWidth = game:GetService("TextService"):GetTextSize(gameLabel.Text, gameLabel.TextSize, gameLabel.Font, Vector2.new(1000, 20)).X
+			totalWidth = totalWidth + gameWidth + 30 -- separator + padding
 		end
 		
-		local newWidth = math.max(200, maxWidth + 32)
-		local newHeight = ShowGame and 50 or 36
+		local newWidth = math.max(300, totalWidth)
 		
 		TweenService:Create(obj1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, newWidth, 0, newHeight)
+			Size = UDim2.new(0, newWidth, 0, 28)
 		}):Play()
 	end
 	
@@ -1059,6 +1067,12 @@ function library:AddWatermark(Text, Options)
 			infoLabel.TextTransparency = 1
 			accentBar.BackgroundTransparency = 1
 			obj2.Transparency = 1
+			if ShowGame and gameLabel then
+				gameLabel.TextTransparency = 1
+			end
+			if ShowGame and sep1 then
+				sep1.TextTransparency = 1
+			end
 			
 			TweenService:Create(obj1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				BackgroundTransparency = 0
@@ -1075,6 +1089,16 @@ function library:AddWatermark(Text, Options)
 			TweenService:Create(obj2, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Transparency = 0
 			}):Play()
+			if ShowGame and gameLabel then
+				TweenService:Create(gameLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					TextTransparency = 0
+				}):Play()
+			end
+			if ShowGame and sep1 then
+				TweenService:Create(sep1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					TextTransparency = 0
+				}):Play()
+			end
 		else
 			-- Fade out animasyonu
 			TweenService:Create(obj1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -1092,6 +1116,16 @@ function library:AddWatermark(Text, Options)
 			TweenService:Create(obj2, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Transparency = 1
 			}):Play()
+			if ShowGame and gameLabel then
+				TweenService:Create(gameLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					TextTransparency = 1
+				}):Play()
+			end
+			if ShowGame and sep1 then
+				TweenService:Create(sep1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					TextTransparency = 1
+				}):Play()
+			end
 			
 			task.delay(0.3, function()
 				obj1.Visible = false
