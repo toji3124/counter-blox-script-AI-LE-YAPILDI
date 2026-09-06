@@ -966,31 +966,90 @@ local function getNotifyHolder()
 	return NotifyHolder
 end
 
-function library:Notify(titleOrConfig, text, duration)
-	local title = "Notification"
-	local desc = ""
-	local dur = 2.0
+-- ────────────────────────────────────────────────────────────────
+--  Notify sistemi – state
+-- ────────────────────────────────────────────────────────────────
+local NOTIFY_MAX_STACK  = 5          -- ekranda aynı anda max bu kadar
+local NOTIFY_QUEUE      = {}         -- bekleyen bildirimler
+local NOTIFY_ACTIVE     = {}         -- şu an ekrandakiler (card ref'leri)
+local NOTIFY_PROCESSING = false      -- kuyruk işleniyor mu
 
-	if type(titleOrConfig) == "table" then
-		title = titleOrConfig.Title or titleOrConfig.title or "Notification"
-		desc = titleOrConfig.Text or titleOrConfig.text or titleOrConfig.Message or titleOrConfig.desc or ""
-		dur = tonumber(titleOrConfig.Duration or titleOrConfig.duration or titleOrConfig.Time) or 2.0
-	elseif text ~= nil then
-		title = tostring(titleOrConfig or "Notification")
-		desc = tostring(text or "")
-		dur = tonumber(duration) or 2.0
-	else
-		title = "Notification"
-		desc = tostring(titleOrConfig or "")
-		dur = tonumber(duration) or 2.0
+-- Type → otomatik renk tablosu
+local NOTIFY_TYPE_COLORS = {
+	success = Color3.fromRGB(80,  220, 120),
+	error   = Color3.fromRGB(220, 80,  80),
+	warning = Color3.fromRGB(255, 180, 50),
+	info    = Color3.fromRGB(91,  133, 197),
+}
+
+local function notifyActiveCount()
+	local count = 0
+	for _, card in ipairs(NOTIFY_ACTIVE) do
+		if card and card.Parent then count += 1 end
 	end
+	return count
+end
+
+local function notifyCleanActive()
+	local clean = {}
+	for _, card in ipairs(NOTIFY_ACTIVE) do
+		if card and card.Parent then
+			clean[#clean+1] = card
+		end
+	end
+	NOTIFY_ACTIVE = clean
+end
+
+local function processQueue()
+	if NOTIFY_PROCESSING then return end
+	NOTIFY_PROCESSING = true
+	task.spawn(function()
+		while #NOTIFY_QUEUE > 0 do
+			notifyCleanActive()
+			if notifyActiveCount() < NOTIFY_MAX_STACK then
+				local cfg = table.remove(NOTIFY_QUEUE, 1)
+				if cfg then
+					library:_ShowNotify(cfg)
+				end
+			end
+			task.wait(0.08)
+		end
+		NOTIFY_PROCESSING = false
+	end)
+end
+
+function library:_ShowNotify(cfg)
+	local title     = cfg.title    or "Notification"
+	local desc      = cfg.desc     or ""
+	local dur       = cfg.dur      or 2.0
+	local barColor  = cfg.color    or Color3.fromRGB(91, 133, 197)
+	local persistent= cfg.persistent
+	local onClick   = cfg.onClick
 
 	local holder = getNotifyHolder()
 	if not holder then return end
 
-	local barColor = (type(titleOrConfig) == "table" and (titleOrConfig.Color or titleOrConfig.AccentColor)) or Color3.fromRGB(91, 133, 197)
+	-- Aynı title'lı persistent olmayan bildirim varsa güncelle
+	for _, existCard in ipairs(NOTIFY_ACTIVE) do
+		if existCard and existCard.Parent then
+			local existTitle = existCard:FindFirstChild("Inner") and existCard.Inner:FindFirstChild("Title")
+			if existTitle and existTitle.Text == title and not persistent then
+				-- Desc'i güncelle, bar'ı sıfırla
+				local existDesc = existCard.Inner:FindFirstChild("Desc")
+				if existDesc then existDesc.Text = desc end
+				local existBar  = existCard.Inner:FindFirstChild("BarBG") and existCard.Inner.BarBG:FindFirstChild("Bar")
+				if existBar then
+					existBar.Size = UDim2.new(1, 0, 1, 0)
+					TweenService:Create(existBar, TweenInfo.new(dur, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
+						Size = UDim2.new(0, 0, 1, 0)
+					}):Play()
+				end
+				return
+			end
+		end
+	end
 
-	-- Dış kart (boşluk placeholder için)
+	-- ── Kart oluştur ──────────────────────────────────────────────
 	local Card = Instance.new("Frame")
 	Card.Name = "NotifyCard"
 	Card.Parent = holder
@@ -1000,7 +1059,8 @@ function library:Notify(titleOrConfig, text, duration)
 	Card.ClipsDescendants = false
 	Card.ZIndex = 1000
 
-	-- İç kart (görünür kısım) – başlangıçta sağ dışarıda
+	NOTIFY_ACTIVE[#NOTIFY_ACTIVE+1] = Card
+
 	local Inner = Instance.new("Frame")
 	Inner.Name = "Inner"
 	Inner.Parent = Card
@@ -1011,19 +1071,16 @@ function library:Notify(titleOrConfig, text, duration)
 	Inner.ClipsDescendants = true
 	Inner.ZIndex = 1001
 
-	-- Köşe yuvarlama
 	local CardCorner = Instance.new("UICorner")
 	CardCorner.CornerRadius = UDim.new(0, 6)
 	CardCorner.Parent = Inner
 
-	-- Dış kenarlık (glow efekti)
 	local CardStroke = Instance.new("UIStroke")
 	CardStroke.Parent = Inner
 	CardStroke.Color = barColor
 	CardStroke.Thickness = 1
 	CardStroke.Transparency = 0.65
 
-	-- Sol accent şeridi (4px, daha belirgin)
 	local Accent = Instance.new("Frame")
 	Accent.Name = "Accent"
 	Accent.Parent = Inner
@@ -1033,12 +1090,10 @@ function library:Notify(titleOrConfig, text, duration)
 	Accent.Size = UDim2.new(0, 4, 1, 0)
 	Accent.ZIndex = 1002
 
-	-- Accent köşe yuvarlama
 	local AccentCorner = Instance.new("UICorner")
 	AccentCorner.CornerRadius = UDim.new(0, 3)
 	AccentCorner.Parent = Accent
 
-	-- Hafif gradient overlay (üstten alta açık → koyu)
 	local Gradient = Instance.new("UIGradient")
 	Gradient.Color = ColorSequence.new{
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 35, 40)),
@@ -1047,7 +1102,6 @@ function library:Notify(titleOrConfig, text, duration)
 	Gradient.Rotation = 90
 	Gradient.Parent = Inner
 
-	-- Başlık
 	local TitleLabel = Instance.new("TextLabel")
 	TitleLabel.Name = "Title"
 	TitleLabel.Parent = Inner
@@ -1061,7 +1115,6 @@ function library:Notify(titleOrConfig, text, duration)
 	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	TitleLabel.ZIndex = 1003
 
-	-- Açıklama
 	local DescLabel = Instance.new("TextLabel")
 	DescLabel.Name = "Desc"
 	DescLabel.Parent = Inner
@@ -1076,7 +1129,6 @@ function library:Notify(titleOrConfig, text, duration)
 	DescLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	DescLabel.ZIndex = 1003
 
-	-- Progress bar arka plan
 	local BarBG = Instance.new("Frame")
 	BarBG.Name = "BarBG"
 	BarBG.Parent = Inner
@@ -1086,7 +1138,6 @@ function library:Notify(titleOrConfig, text, duration)
 	BarBG.Size = UDim2.new(1, 0, 0, 3)
 	BarBG.ZIndex = 1002
 
-	-- Progress bar dolgu
 	local Bar = Instance.new("Frame")
 	Bar.Name = "Bar"
 	Bar.Parent = BarBG
@@ -1096,7 +1147,6 @@ function library:Notify(titleOrConfig, text, duration)
 	Bar.Size = UDim2.new(1, 0, 1, 0)
 	Bar.ZIndex = 1003
 
-	-- Tıklama butonu (kapatmak için)
 	local ClickBtn = Instance.new("TextButton")
 	ClickBtn.Name = "ClickBtn"
 	ClickBtn.Parent = Inner
@@ -1105,12 +1155,17 @@ function library:Notify(titleOrConfig, text, duration)
 	ClickBtn.Text = ""
 	ClickBtn.ZIndex = 1005
 
-	local closed = false
+	-- ── Kapatma mantığı ───────────────────────────────────────────
+	local closed   = false
+	local paused   = false  -- hover pause
+	local elapsed  = 0      -- geçen süre (pause için)
+	local barTween = nil
+
 	local function closeCard()
 		if closed then return end
 		closed = true
 		pcall(function()
-			-- Sola doğru kayarak çıkar
+			if barTween then barTween:Cancel() end
 			TweenService:Create(Inner, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				Position = UDim2.new(-1, -60, 0, 0)
 			}):Play()
@@ -1120,40 +1175,329 @@ function library:Notify(titleOrConfig, text, duration)
 		end)
 		task.delay(0.25, function()
 			pcall(function() Card:Destroy() end)
+			notifyCleanActive()
+			processQueue()   -- kuyrukta bekleyen varsa göster
 		end)
 	end
 
-	ClickBtn.MouseButton1Click:Connect(closeCard)
-
-	-- Hover: stroke parlar
+	-- ── Hover → zamanlayıcıyı durdur / devam ettir ────────────────
 	ClickBtn.MouseEnter:Connect(function()
+		paused = true
 		pcall(function()
+			if barTween then barTween:Cancel() end
 			TweenService:Create(CardStroke, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Transparency = 0.3
 			}):Play()
 		end)
 	end)
+
 	ClickBtn.MouseLeave:Connect(function()
+		paused = false
 		pcall(function()
 			TweenService:Create(CardStroke, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Transparency = 0.65
 			}):Play()
+			if not persistent and not closed then
+				local remaining = math.max(0, dur - elapsed)
+				barTween = TweenService:Create(Bar, TweenInfo.new(remaining, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
+					Size = UDim2.new(0, 0, 1, 0)
+				})
+				barTween:Play()
+				task.delay(remaining, function()
+					if not closed and not paused then closeCard() end
+				end)
+			end
 		end)
 	end)
 
-	-- Sağdan içeri kayarak gir
+	-- ── Tıklama: OnClick callback veya kapat ─────────────────────
+	ClickBtn.MouseButton1Click:Connect(function()
+		if onClick then
+			pcall(onClick)
+		end
+		closeCard()
+	end)
+
+	-- ── Giriş animasyonu + timer ──────────────────────────────────
 	pcall(function()
 		TweenService:Create(Inner, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0, 0, 0, 0)
 		}):Play()
-		TweenService:Create(Bar, TweenInfo.new(dur, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
-			Size = UDim2.new(0, 0, 1, 0)
-		}):Play()
-	end)
 
-	task.delay(dur, closeCard)
+		if not persistent then
+			barTween = TweenService:Create(Bar, TweenInfo.new(dur, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
+				Size = UDim2.new(0, 0, 1, 0)
+			})
+			barTween:Play()
+
+			-- Elapsed sayacı (hover pause için)
+			task.spawn(function()
+				local step = 0.05
+				while not closed and elapsed < dur do
+					task.wait(step)
+					if not paused then
+						elapsed = elapsed + step
+					end
+				end
+				if not closed and not paused then
+					closeCard()
+				end
+			end)
+		else
+			-- Persistent: bar yok, göster
+			BarBG.Visible = false
+		end
+	end)
+end
+
+-- ── Ana Notify: kuyruk + stack yönetimi ──────────────────────────
+function library:Notify(titleOrConfig, text, duration)
+	-- Parametreleri normalize et
+	local cfg = {}
+
+	if type(titleOrConfig) == "table" then
+		local t = titleOrConfig
+		cfg.title      = t.Title or t.title or "Notification"
+		cfg.desc       = t.Text or t.text or t.Message or t.desc or ""
+		cfg.dur        = tonumber(t.Duration or t.duration or t.Time) or 2.0
+		cfg.persistent = (cfg.dur == 0) or (t.Persistent == true)
+		cfg.onClick    = t.OnClick or t.onClick
+		-- Type → otomatik renk
+		local typeKey  = t.Type or t.type
+		if typeKey and NOTIFY_TYPE_COLORS[tostring(typeKey):lower()] then
+			cfg.color = NOTIFY_TYPE_COLORS[tostring(typeKey):lower()]
+		else
+			cfg.color = t.Color or t.AccentColor or Color3.fromRGB(91, 133, 197)
+		end
+	elseif text ~= nil then
+		cfg.title = tostring(titleOrConfig or "Notification")
+		cfg.desc  = tostring(text or "")
+		cfg.dur   = tonumber(duration) or 2.0
+		cfg.color = Color3.fromRGB(91, 133, 197)
+	else
+		cfg.title = "Notification"
+		cfg.desc  = tostring(titleOrConfig or "")
+		cfg.dur   = tonumber(duration) or 2.0
+		cfg.color = Color3.fromRGB(91, 133, 197)
+	end
+
+	if cfg.persistent then cfg.dur = cfg.dur == 0 and 9999 or cfg.dur end
+
+	notifyCleanActive()
+	if notifyActiveCount() < NOTIFY_MAX_STACK then
+		-- Direkt göster
+		library:_ShowNotify(cfg)
+	else
+		-- Kuyruğa ekle
+		NOTIFY_QUEUE[#NOTIFY_QUEUE+1] = cfg
+		processQueue()
+	end
 end
 library.Notification = library.Notify
+
+--====================================================================--
+--                        WARNING / POPUP UI                          --
+--====================================================================--
+
+function library:ShowWarning(config)
+	local title      = config.Title or config.title or "UYARI"
+	local text       = config.Text or config.text or config.Message or "Emin misiniz?"
+	local confirmTxt = config.ConfirmText or "Onayla"
+	local cancelTxt  = config.CancelText or "İptal"
+	local onConfirm  = config.OnConfirm
+	local onCancel   = config.OnCancel
+
+	local core = game:GetService("CoreGui")
+	local WarningGui = core:FindFirstChild("PCR_WarningGui")
+	if not WarningGui then
+		WarningGui = Instance.new("ScreenGui")
+		WarningGui.Name = "PCR_WarningGui"
+		WarningGui.ResetOnSpawn = false
+		WarningGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+		pcall(function() WarningGui.Parent = core end)
+		if not WarningGui.Parent then
+			pcall(function() WarningGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end)
+		end
+	end
+
+	-- Arka plan karartma
+	local Overlay = Instance.new("Frame")
+	Overlay.Name = "Overlay"
+	Overlay.Parent = WarningGui
+	Overlay.Size = UDim2.new(1, 0, 1, 0)
+	Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	Overlay.BackgroundTransparency = 1 -- Animasyonla girecek
+	Overlay.BorderSizePixel = 0
+	Overlay.ZIndex = 2000
+	Overlay.Active = true
+
+	local Dialog = Instance.new("Frame")
+	Dialog.Name = "Dialog"
+	Dialog.Parent = Overlay
+	Dialog.AnchorPoint = Vector2.new(0.5, 0.5)
+	Dialog.Position = UDim2.new(0.5, 0, 0.5, 20) -- Hafif aşağıdan gelecek
+	Dialog.Size = UDim2.new(0, 320, 0, 150)
+	Dialog.BackgroundColor3 = Color3.fromRGB(22, 22, 25)
+	Dialog.BorderSizePixel = 0
+	Dialog.ZIndex = 2001
+	Dialog.BackgroundTransparency = 1
+
+	local DialogCorner = Instance.new("UICorner")
+	DialogCorner.CornerRadius = UDim.new(0, 8)
+	DialogCorner.Parent = Dialog
+
+	local DialogStroke = Instance.new("UIStroke")
+	DialogStroke.Parent = Dialog
+	DialogStroke.Color = Color3.fromRGB(220, 80, 80)
+	DialogStroke.Thickness = 1.5
+	DialogStroke.Transparency = 1
+
+	-- Kırmızı üst şerit
+	local TopBar = Instance.new("Frame")
+	TopBar.Name = "TopBar"
+	TopBar.Parent = Dialog
+	TopBar.Size = UDim2.new(1, 0, 0, 4)
+	TopBar.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+	TopBar.BorderSizePixel = 0
+	TopBar.ZIndex = 2002
+	TopBar.BackgroundTransparency = 1
+	local TopBarCorner = Instance.new("UICorner")
+	TopBarCorner.CornerRadius = UDim.new(0, 8)
+	TopBarCorner.Parent = TopBar
+	local BottomHider = Instance.new("Frame") -- Yuvarlatmayı alt taraftan kaldırmak için
+	BottomHider.Parent = TopBar
+	BottomHider.Size = UDim2.new(1, 0, 0, 2)
+	BottomHider.Position = UDim2.new(0, 0, 1, -2)
+	BottomHider.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+	BottomHider.BorderSizePixel = 0
+	BottomHider.ZIndex = 2002
+	BottomHider.BackgroundTransparency = 1
+
+	local TitleLabel = Instance.new("TextLabel")
+	TitleLabel.Parent = Dialog
+	TitleLabel.BackgroundTransparency = 1
+	TitleLabel.Position = UDim2.new(0, 15, 0, 15)
+	TitleLabel.Size = UDim2.new(1, -30, 0, 20)
+	TitleLabel.Font = Enum.Font.GothamBold
+	TitleLabel.Text = title
+	TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TitleLabel.TextSize = 16
+	TitleLabel.TextXAlignment = Enum.TextXAlignment.Center
+	TitleLabel.ZIndex = 2002
+	TitleLabel.TextTransparency = 1
+
+	local DescLabel = Instance.new("TextLabel")
+	DescLabel.Parent = Dialog
+	DescLabel.BackgroundTransparency = 1
+	DescLabel.Position = UDim2.new(0, 15, 0, 45)
+	DescLabel.Size = UDim2.new(1, -30, 0, 45)
+	DescLabel.Font = Enum.Font.Gotham
+	DescLabel.Text = text
+	DescLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+	DescLabel.TextSize = 13
+	DescLabel.TextXAlignment = Enum.TextXAlignment.Center
+	DescLabel.TextYAlignment = Enum.TextYAlignment.Top
+	DescLabel.TextWrapped = true
+	DescLabel.ZIndex = 2002
+	DescLabel.TextTransparency = 1
+
+	local BtnHolder = Instance.new("Frame")
+	BtnHolder.Parent = Dialog
+	BtnHolder.BackgroundTransparency = 1
+	BtnHolder.Position = UDim2.new(0, 15, 1, -45)
+	BtnHolder.Size = UDim2.new(1, -30, 0, 30)
+	BtnHolder.ZIndex = 2002
+
+	local ConfirmBtn = Instance.new("TextButton")
+	ConfirmBtn.Parent = BtnHolder
+	ConfirmBtn.Size = UDim2.new(0.5, -5, 1, 0)
+	ConfirmBtn.Position = UDim2.new(0.5, 5, 0, 0)
+	ConfirmBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+	ConfirmBtn.Font = Enum.Font.GothamBold
+	ConfirmBtn.Text = confirmTxt
+	ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	ConfirmBtn.TextSize = 13
+	ConfirmBtn.ZIndex = 2003
+	ConfirmBtn.BackgroundTransparency = 1
+	ConfirmBtn.TextTransparency = 1
+	local ConfirmCorner = Instance.new("UICorner")
+	ConfirmCorner.CornerRadius = UDim.new(0, 6)
+	ConfirmCorner.Parent = ConfirmBtn
+
+	local CancelBtn = Instance.new("TextButton")
+	CancelBtn.Parent = BtnHolder
+	CancelBtn.Size = UDim2.new(0.5, -5, 1, 0)
+	CancelBtn.Position = UDim2.new(0, 0, 0, 0)
+	CancelBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+	CancelBtn.Font = Enum.Font.Gotham
+	CancelBtn.Text = cancelTxt
+	CancelBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	CancelBtn.TextSize = 13
+	CancelBtn.ZIndex = 2003
+	CancelBtn.BackgroundTransparency = 1
+	CancelBtn.TextTransparency = 1
+	local CancelCorner = Instance.new("UICorner")
+	CancelCorner.CornerRadius = UDim.new(0, 6)
+	CancelCorner.Parent = CancelBtn
+
+	-- Close logic
+	local closed = false
+	local function closeDialog()
+		if closed then return end
+		closed = true
+		TweenService:Create(Overlay, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(Dialog, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, 0, 0.5, 20), BackgroundTransparency = 1}):Play()
+		TweenService:Create(DialogStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
+		TweenService:Create(TopBar, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(BottomHider, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(TitleLabel, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+		TweenService:Create(DescLabel, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+		TweenService:Create(ConfirmBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+		TweenService:Create(CancelBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+		task.delay(0.25, function()
+			Overlay:Destroy()
+		end)
+	end
+
+	ConfirmBtn.MouseButton1Click:Connect(function()
+		closeDialog()
+		if onConfirm then pcall(onConfirm) end
+	end)
+
+	CancelBtn.MouseButton1Click:Connect(function()
+		closeDialog()
+		if onCancel then pcall(onCancel) end
+	end)
+
+	-- Hover anims
+	ConfirmBtn.MouseEnter:Connect(function()
+		if closed then return end
+		TweenService:Create(ConfirmBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(240, 100, 100)}):Play()
+	end)
+	ConfirmBtn.MouseLeave:Connect(function()
+		if closed then return end
+		TweenService:Create(ConfirmBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(220, 80, 80)}):Play()
+	end)
+	CancelBtn.MouseEnter:Connect(function()
+		if closed then return end
+		TweenService:Create(CancelBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(45, 45, 50)}):Play()
+	end)
+	CancelBtn.MouseLeave:Connect(function()
+		if closed then return end
+		TweenService:Create(CancelBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
+	end)
+
+	-- Show anim
+	TweenService:Create(Overlay, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.4}):Play()
+	TweenService:Create(Dialog, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 0}):Play()
+	TweenService:Create(DialogStroke, TweenInfo.new(0.4), {Transparency = 0.5}):Play()
+	TweenService:Create(TopBar, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
+	TweenService:Create(BottomHider, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
+	TweenService:Create(TitleLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+	TweenService:Create(DescLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+	TweenService:Create(ConfirmBtn, TweenInfo.new(0.4), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+	TweenService:Create(CancelBtn, TweenInfo.new(0.4), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+end
 
 
 --====================================================================--
