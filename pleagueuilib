@@ -1107,6 +1107,424 @@ function library:Notify(titleOrConfig, text, duration)
 end
 library.Notification = library.Notify
 
+--====================================================================--
+--                        KEYBINDS UI MODULE                          --
+--====================================================================--
+
+local function formatKeyName(key)
+	if not key then return "None" end
+	local name = tostring(key)
+	if typeof(key) == "EnumItem" then
+		name = key.Name
+	elseif type(key) == "string" then
+		local parts = string.split(key, ".")
+		name = parts[#parts]
+	end
+	local shortcuts = {
+		["RightShift"] = "RShift",
+		["LeftShift"] = "LShift",
+		["RightControl"] = "RCtrl",
+		["LeftControl"] = "LCtrl",
+		["RightAlt"] = "RAlt",
+		["LeftAlt"] = "LAlt",
+		["MouseButton1"] = "MB1",
+		["MouseButton2"] = "MB2",
+		["MouseButton3"] = "MB3",
+		["LeftBracket"] = "[",
+		["RightBracket"] = "]",
+		["Backquote"] = "`",
+		["CapsLock"] = "Caps",
+		["Return"] = "Enter",
+		["PageUp"] = "PgUp",
+		["PageDown"] = "PgDn",
+		["Delete"] = "Del",
+		["Insert"] = "Ins",
+		["Unknown"] = "None"
+	}
+	return shortcuts[name] or name
+end
+
+local KeybindsModule = {
+	Initialized = false,
+	Main = nil,
+	List = nil,
+	EmptyLabel = nil,
+	Items = {},
+	Visible = true
+}
+
+function library:AddKeybindList(options)
+	if KeybindsModule.Initialized and KeybindsModule.Main then
+		if options and type(options) == "table" then
+			if options.Visible ~= nil then
+				KeybindsModule:SetVisible(options.Visible)
+			end
+			if options.Title then
+				KeybindsModule:SetTitle(options.Title)
+			end
+			if options.Position then
+				KeybindsModule:SetPosition(options.Position)
+			end
+		end
+		return KeybindsModule
+	end
+
+	options = options or {}
+	local titleText = options.Title or "Keybinds"
+	local defaultPos = options.Position or UDim2.new(0, 20, 0.4, 0)
+	local isVisible = options.Visible
+	if isVisible == nil then isVisible = true end
+
+	local KB_Main = Instance.new("Frame")
+	local KB_Corner = Instance.new("UICorner")
+	local KB_Stroke = Instance.new("UIStroke")
+	local KB_TopAccent = Instance.new("Frame")
+	local KB_TopCorner = Instance.new("UICorner")
+	local KB_Header = Instance.new("Frame")
+	local KB_Title = Instance.new("TextLabel")
+	local KB_Sep = Instance.new("Frame")
+	local KB_List = Instance.new("Frame")
+	local KB_Layout = Instance.new("UIListLayout")
+	local KB_Empty = Instance.new("TextLabel")
+
+	KB_Main.Name = "PCR_KeybindList"
+	KB_Main.AnchorPoint = Vector2.new(0, 0)
+	KB_Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	KB_Main.BorderSizePixel = 0
+	KB_Main.Position = defaultPos
+	KB_Main.Size = UDim2.new(0, 190, 0, 30)
+	KB_Main.ZIndex = 80
+	KB_Main.ClipsDescendants = true
+	KB_Main.Visible = isVisible
+	KB_Main.Parent = PCR_1
+
+	KB_Corner.CornerRadius = UDim.new(0, 5)
+	KB_Corner.Parent = KB_Main
+
+	KB_Stroke.Color = Color3.fromRGB(52, 52, 52)
+	KB_Stroke.Thickness = 1
+	KB_Stroke.LineJoinMode = Enum.LineJoinMode.Round
+	KB_Stroke.Parent = KB_Main
+
+	KB_TopAccent.Name = "TopAccent"
+	KB_TopAccent.BackgroundColor3 = Color3.fromRGB(91, 133, 197)
+	KB_TopAccent.BorderSizePixel = 0
+	KB_TopAccent.Position = UDim2.new(0, 0, 0, 0)
+	KB_TopAccent.Size = UDim2.new(1, 0, 0, 2)
+	KB_TopAccent.ZIndex = 82
+	KB_TopAccent.Parent = KB_Main
+
+	KB_TopCorner.CornerRadius = UDim.new(0, 5)
+	KB_TopCorner.Parent = KB_TopAccent
+
+	KB_Header.Name = "Header"
+	KB_Header.BackgroundTransparency = 1
+	KB_Header.BorderSizePixel = 0
+	KB_Header.Position = UDim2.new(0, 0, 0, 2)
+	KB_Header.Size = UDim2.new(1, 0, 0, 24)
+	KB_Header.ZIndex = 82
+	KB_Header.Parent = KB_Main
+
+	KB_Title.Name = "Title"
+	KB_Title.BackgroundTransparency = 1
+	KB_Title.BorderSizePixel = 0
+	KB_Title.Position = UDim2.new(0, 8, 0, 0)
+	KB_Title.Size = UDim2.new(1, -16, 1, 0)
+	KB_Title.Font = Enum.Font.SourceSansBold
+	KB_Title.Text = string.upper(titleText)
+	KB_Title.TextColor3 = Color3.fromRGB(220, 220, 220)
+	KB_Title.TextSize = 13
+	KB_Title.TextXAlignment = Enum.TextXAlignment.Left
+	KB_Title.ZIndex = 83
+	KB_Title.Parent = KB_Header
+
+	KB_Sep.Name = "Separator"
+	KB_Sep.BackgroundColor3 = Color3.fromRGB(42, 42, 42)
+	KB_Sep.BorderSizePixel = 0
+	KB_Sep.Position = UDim2.new(0, 6, 0, 26)
+	KB_Sep.Size = UDim2.new(1, -12, 0, 1)
+	KB_Sep.ZIndex = 82
+	KB_Sep.Parent = KB_Main
+
+	KB_List.Name = "List"
+	KB_List.BackgroundTransparency = 1
+	KB_List.BorderSizePixel = 0
+	KB_List.Position = UDim2.new(0, 8, 0, 30)
+	KB_List.Size = UDim2.new(1, -16, 0, 0)
+	KB_List.ZIndex = 82
+	KB_List.Parent = KB_Main
+
+	KB_Layout.Name = "Layout"
+	KB_Layout.SortOrder = Enum.SortOrder.LayoutOrder
+	KB_Layout.Padding = UDim.new(0, 2)
+	KB_Layout.Parent = KB_List
+
+	KB_Empty.Name = "EmptyLabel"
+	KB_Empty.BackgroundTransparency = 1
+	KB_Empty.BorderSizePixel = 0
+	KB_Empty.Position = UDim2.new(0, 0, 0, 0)
+	KB_Empty.Size = UDim2.new(1, 0, 0, 20)
+	KB_Empty.Font = Enum.Font.SourceSansItalic
+	KB_Empty.Text = "(No keybinds)"
+	KB_Empty.TextColor3 = Color3.fromRGB(110, 110, 110)
+	KB_Empty.TextSize = 12
+	KB_Empty.TextXAlignment = Enum.TextXAlignment.Center
+	KB_Empty.ZIndex = 83
+	KB_Empty.Parent = KB_List
+
+	-- Smooth Dragging
+	local dragging = false
+	local dragInput = nil
+	local dragStart = nil
+	local startPos = nil
+
+	KB_Main.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = KB_Main.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	KB_Main.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	uis.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			KB_Main.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+
+	KeybindsModule.Main = KB_Main
+	KeybindsModule.List = KB_List
+	KeybindsModule.EmptyLabel = KB_Empty
+	KeybindsModule.Initialized = true
+	KeybindsModule.Visible = isVisible
+
+	local function UpdateSize()
+		if not KB_Main or not KB_List then return end
+		local visibleItemCount = 0
+		for _, item in pairs(KeybindsModule.Items) do
+			if item and item.Frame and item.Frame.Visible then
+				visibleItemCount = visibleItemCount + 1
+			end
+		end
+
+		if visibleItemCount == 0 then
+			KB_Empty.Visible = true
+			local targetH = 30 + 24
+			TweenService:Create(KB_Main, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, 190, 0, targetH)
+			}):Play()
+		else
+			KB_Empty.Visible = false
+			local targetH = 34 + (visibleItemCount * 22)
+			TweenService:Create(KB_Main, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, 190, 0, targetH)
+			}):Play()
+		end
+	end
+
+	KeybindsModule.UpdateSize = UpdateSize
+
+	function KeybindsModule:SetVisible(val)
+		if val == nil then val = not KB_Main.Visible end
+		KB_Main.Visible = val
+		KeybindsModule.Visible = val
+	end
+
+	function KeybindsModule:Toggle()
+		KeybindsModule:SetVisible(not KB_Main.Visible)
+	end
+
+	function KeybindsModule:SetTitle(newTitle)
+		KB_Title.Text = string.upper(tostring(newTitle or "Keybinds"))
+	end
+
+	function KeybindsModule:SetPosition(newPos)
+		if typeof(newPos) == "UDim2" then
+			KB_Main.Position = newPos
+		end
+	end
+
+	function KeybindsModule:Add(name, key, state, mode)
+		name = tostring(name or "Unknown")
+		key = key or "None"
+		state = (state == true)
+		mode = mode or ""
+
+		if KeybindsModule.Items[name] then
+			local existing = KeybindsModule.Items[name]
+			existing:SetKey(key)
+			existing:SetState(state)
+			if mode ~= "" then existing:SetMode(mode) end
+			return existing
+		end
+
+		local item = {
+			Name = name,
+			Key = key,
+			State = state,
+			Mode = mode,
+			Visible = true
+		}
+
+		local Row = Instance.new("Frame")
+		local Dot = Instance.new("Frame")
+		local DotCorner = Instance.new("UICorner")
+		local NameLabel = Instance.new("TextLabel")
+		local TagLabel = Instance.new("TextLabel")
+
+		Row.Name = "Row_" .. name
+		Row.BackgroundTransparency = 1
+		Row.BorderSizePixel = 0
+		Row.Size = UDim2.new(1, 0, 0, 20)
+		Row.ZIndex = 83
+		Row.Parent = KB_List
+
+		Dot.Name = "Dot"
+		Dot.BackgroundColor3 = state and Color3.fromRGB(80, 220, 120) or Color3.fromRGB(90, 90, 90)
+		Dot.BorderSizePixel = 0
+		Dot.Position = UDim2.new(0, 2, 0.5, -3)
+		Dot.Size = UDim2.new(0, 6, 0, 6)
+		Dot.ZIndex = 84
+		Dot.Parent = Row
+
+		DotCorner.CornerRadius = UDim.new(1, 0)
+		DotCorner.Parent = Dot
+
+		NameLabel.Name = "Name"
+		NameLabel.BackgroundTransparency = 1
+		NameLabel.BorderSizePixel = 0
+		NameLabel.Position = UDim2.new(0, 14, 0, 0)
+		NameLabel.Size = UDim2.new(1, -74, 1, 0)
+		NameLabel.Font = Enum.Font.SourceSansSemibold
+		NameLabel.Text = name
+		NameLabel.TextColor3 = state and Color3.fromRGB(230, 230, 230) or Color3.fromRGB(150, 150, 150)
+		NameLabel.TextSize = 13
+		NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		NameLabel.ZIndex = 84
+		NameLabel.Parent = Row
+
+		TagLabel.Name = "Tag"
+		TagLabel.BackgroundTransparency = 1
+		TagLabel.BorderSizePixel = 0
+		TagLabel.Position = UDim2.new(1, -58, 0, 0)
+		TagLabel.Size = UDim2.new(0, 58, 1, 0)
+		TagLabel.Font = Enum.Font.SourceSansBold
+		local formattedKey = formatKeyName(key)
+		TagLabel.Text = "[" .. formattedKey .. "]"
+		TagLabel.TextColor3 = state and Color3.fromRGB(91, 133, 197) or Color3.fromRGB(140, 140, 140)
+		TagLabel.TextSize = 11
+		TagLabel.TextXAlignment = Enum.TextXAlignment.Right
+		TagLabel.ZIndex = 84
+		TagLabel.Parent = Row
+
+		item.Frame = Row
+		item.Dot = Dot
+		item.NameLabel = NameLabel
+		item.TagLabel = TagLabel
+
+		function item:SetKey(newKey)
+			item.Key = newKey
+			local fKey = formatKeyName(newKey)
+			TagLabel.Text = "[" .. fKey .. "]"
+		end
+
+		function item:SetState(newState)
+			item.State = (newState == true)
+			local targetDotColor = item.State and Color3.fromRGB(80, 220, 120) or Color3.fromRGB(90, 90, 90)
+			local targetTextColor = item.State and Color3.fromRGB(230, 230, 230) or Color3.fromRGB(150, 150, 150)
+			local targetTagColor = item.State and Color3.fromRGB(91, 133, 197) or Color3.fromRGB(140, 140, 140)
+
+			TweenService:Create(Dot, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				BackgroundColor3 = targetDotColor
+			}):Play()
+			TweenService:Create(NameLabel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				TextColor3 = targetTextColor
+			}):Play()
+			TweenService:Create(TagLabel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				TextColor3 = targetTagColor
+			}):Play()
+		end
+
+		function item:SetMode(newMode)
+			item.Mode = newMode
+		end
+
+		function item:SetName(newName)
+			item.Name = newName
+			NameLabel.Text = newName
+		end
+
+		function item:SetVisible(v)
+			item.Visible = (v ~= false)
+			Row.Visible = item.Visible
+			UpdateSize()
+		end
+
+		function item:Remove()
+			if KeybindsModule.Items[name] then
+				KeybindsModule.Items[name] = nil
+			end
+			Row:Destroy()
+			UpdateSize()
+		end
+
+		KeybindsModule.Items[name] = item
+		UpdateSize()
+
+		return item
+	end
+
+	function KeybindsModule:Remove(name)
+		if KeybindsModule.Items[name] then
+			KeybindsModule.Items[name]:Remove()
+		end
+	end
+
+	function KeybindsModule:Get(name)
+		return KeybindsModule.Items[name]
+	end
+
+	function KeybindsModule:Clear()
+		for _, item in pairs(KeybindsModule.Items) do
+			if item and item.Frame then
+				item.Frame:Destroy()
+			end
+		end
+		KeybindsModule.Items = {}
+		UpdateSize()
+	end
+
+	UpdateSize()
+	return KeybindsModule
+end
+
+library.ToggleKeybindList = function()
+	if library.KeybindList then
+		library.KeybindList:Toggle()
+	end
+end
+
+-- Default KeybindList instance
+library.KeybindList = library:AddKeybindList({ Title = "Keybinds", Visible = true })
+
 function library:Init(name)
     for i,v in pairs(Upper:GetChildren()) do
         if v:IsA('TextButton') then
@@ -1846,6 +2264,11 @@ function library:AddWindow(text)
 			local activated = (Enabled == true)
 			local y = {};
 
+			local kbEntry = nil
+			if keybind and library.KeybindList then
+				kbEntry = library.KeybindList:Add(Text, keybind, activated, "[Toggle]")
+			end
+
 			local TemplateToggle = Instance.new("Frame")
 			local TextLabel = Instance.new("TextLabel")
 			local Interactive = Instance.new("TextButton")
@@ -1865,6 +2288,9 @@ function library:AddWindow(text)
 
 			local function SetState(state, doCallback)
 				activated = state
+				if kbEntry then
+					kbEntry:SetState(activated)
+				end
 				if activated then
 					TweenService:Create(color, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(84, 122, 181)}):Play()
 					TweenService:Create(TextLabel, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(152, 152, 152)}):Play()
@@ -1986,6 +2412,9 @@ function library:AddWindow(text)
 						KeyButton:TweenSize(UDim2.new(0,getsize( v1.KeyCode.Name),0,13), "Out", "Quint", 0.3, true)
 						KeyButton.Text = v1.KeyCode.Name
 						KeyCode = v1.KeyCode.Name;
+						if kbEntry then
+							kbEntry:SetKey(v1.KeyCode)
+						end
 						wait(.2)
 						ischanging = false
 					end
@@ -2008,6 +2437,8 @@ function library:AddWindow(text)
 					SetState(val, true)
 				end
 			end
+
+			y.KeybindItem = kbEntry
 
 			if activated then
 				spawn(function()
@@ -2125,6 +2556,11 @@ function library:AddWindow(text)
 			KeyCode = KeyCode or Enum.KeyCode.RightAlt
 			Action = Action or function() end
 
+			local kbEntry = nil
+			if library.KeybindList then
+				kbEntry = library.KeybindList:Add(Text, KeyCode, false, "[Hold]")
+			end
+
 			local TemplateKBIND = Instance.new("Frame")
 			local TextLabel = Instance.new("TextLabel")
 			local Interactive = Instance.new("TextButton")
@@ -2177,7 +2613,7 @@ function library:AddWindow(text)
 			KeyButton.ZIndex = 55
 			KeyButton.AutoButtonColor = false
 			KeyButton.Font = Enum.Font.ArialBold
-			KeyButton.Text = KeyCode.Name
+			KeyButton.Text = (typeof(KeyCode) == "EnumItem" and KeyCode.Name) or tostring(KeyCode)
 			KeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 			KeyButton.TextSize = 10.000
 			KeyButton.TextStrokeColor3 = Color3.fromRGB(45, 45, 45)
@@ -2186,11 +2622,16 @@ function library:AddWindow(text)
 			h5.Name = "h5"
 			h5.Parent = KeyButton
 
-
 			local ischanging = false;
 			game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
 				if not gp then 
-					if (a.KeyCode.Name == KeyCode or a.KeyCode.Name == KeyCode.Name) and ischanging == false then 
+					if (a.KeyCode.Name == KeyCode or (typeof(KeyCode) == "EnumItem" and a.KeyCode == KeyCode) or a.KeyCode.Name == tostring(KeyCode)) and ischanging == false then 
+						if kbEntry then
+							kbEntry:SetState(true)
+							task.delay(0.2, function()
+								if kbEntry then kbEntry:SetState(false) end
+							end)
+						end
 						pcall(function()
 							Action(a.KeyCode)
 						end)
@@ -2214,6 +2655,9 @@ function library:AddWindow(text)
 					KeyButton:TweenSize(UDim2.new(0,getsize( v1.KeyCode.Name),0,13), "Out", "Quint", 0.3, true)
 					KeyButton.Text = v1.KeyCode.Name
 					KeyCode = v1.KeyCode.Name;
+					if kbEntry then
+						kbEntry:SetKey(v1.KeyCode)
+					end
 					wait(.2)
 					ischanging = false
 				end
@@ -2225,6 +2669,20 @@ function library:AddWindow(text)
 			wait()
 			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
 			UpdateMainSize(nil,true)
+
+			local kbHandle = {
+				KeybindItem = kbEntry,
+				SetKey = function(self, newKey)
+					KeyCode = newKey
+					KeyButton.Text = formatKeyName(newKey)
+					if kbEntry then kbEntry:SetKey(newKey) end
+				end,
+				SetVisible = function(self, v)
+					TemplateKBIND.Visible = v
+					if kbEntry then kbEntry:SetVisible(v) end
+				end
+			}
+			return kbHandle
 		end
 		function inside:AddDropdown(Text,tbl,sel,Action)
 			Text = Text or 'Not Defined'
