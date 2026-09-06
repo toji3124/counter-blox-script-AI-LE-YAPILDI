@@ -1015,12 +1015,12 @@ function library:Notify(titleOrConfig, text, duration)
 	CardStroke.Parent = Inner
 	CardStroke.Color = Color3.fromRGB(55, 55, 55)
 	CardStroke.Thickness = 1
-	CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	local barColor = (type(titleOrConfig) == "table" and (titleOrConfig.Color or titleOrConfig.AccentColor)) or Color3.fromRGB(91, 133, 197)
 
 	local Accent = Instance.new("Frame")
 	Accent.Name = "Accent"
 	Accent.Parent = Inner
-	Accent.BackgroundColor3 = Color3.fromRGB(91, 133, 197)
+	Accent.BackgroundColor3 = barColor
 	Accent.BorderSizePixel = 0
 	Accent.Position = UDim2.new(0, 0, 0, 0)
 	Accent.Size = UDim2.new(0, 3, 1, 0)
@@ -1069,7 +1069,7 @@ function library:Notify(titleOrConfig, text, duration)
 	local Bar = Instance.new("Frame")
 	Bar.Name = "Bar"
 	Bar.Parent = BarBG
-	Bar.BackgroundColor3 = Color3.fromRGB(91, 133, 197)
+	Bar.BackgroundColor3 = barColor
 	Bar.BorderSizePixel = 0
 	Bar.Position = UDim2.new(0, 0, 0, 0)
 	Bar.Size = UDim2.new(1, 0, 1, 0)
@@ -2304,6 +2304,32 @@ function library:AddWindow(text)
 					TweenService:Create(color, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(25, 25, 25)}):Play()
 					TweenService:Create(TextLabel, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(84, 84, 84)}):Play()
 				end
+
+				if doCallback and library.KeybindNotifications then
+					pcall(function()
+						local keyTag = ""
+						if keybind then
+							local kn = (typeof(KeyCode) == "EnumItem" and KeyCode.Name) or tostring(KeyCode or keybind)
+							keyTag = " [" .. formatKeyName(kn) .. "]"
+						end
+						if activated then
+							library:Notify({
+								Title = Text,
+								Text = "Açıldı (Aktif)" .. keyTag,
+								Duration = 1.8,
+								Color = Color3.fromRGB(80, 220, 120)
+							})
+						else
+							library:Notify({
+								Title = Text,
+								Text = "Kapatıldı (Kapalı)" .. keyTag,
+								Duration = 1.5,
+								Color = Color3.fromRGB(220, 80, 80)
+							})
+						end
+					end)
+				end
+
 				if doCallback then
 					spawn(function()
 						pcall(function()
@@ -2394,19 +2420,16 @@ function library:AddWindow(text)
 				local KeyCode = keybind
 				game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
 					if not gp then 
-						if (a.KeyCode.Name == KeyCode or a.KeyCode.Name == KeyCode.Name) and ischanging == false then 
+						local matchesKey = false
+						if typeof(KeyCode) == "EnumItem" then
+							matchesKey = (a.KeyCode == KeyCode or a.KeyCode.Name == KeyCode.Name)
+						else
+							matchesKey = (a.KeyCode.Name == tostring(KeyCode))
+						end
+						if matchesKey and ischanging == false then 
 							pcall(function()
 								Toggle()
 							end)
-							if library.KeybindNotifications then
-								pcall(function()
-									library:Notify({
-										Title = "Keybind",
-										Text = Text .. ": " .. (activated and "Enabled" or "Disabled") .. " [" .. formatKeyName(KeyCode) .. "]",
-										Duration = 1.6
-									})
-								end)
-							end
 						end
 					end
 				end)
@@ -2433,9 +2456,10 @@ function library:AddWindow(text)
 						if library.KeybindNotifications then
 							pcall(function()
 								library:Notify({
-									Title = "Keybind Changed",
-									Text = Text .. " -> [" .. formatKeyName(v1.KeyCode) .. "]",
-									Duration = 1.8
+									Title = Text,
+									Text = "Tuş Atandı -> [" .. formatKeyName(v1.KeyCode) .. "]",
+									Duration = 1.8,
+									Color = Color3.fromRGB(91, 133, 197)
 								})
 							end)
 						end
@@ -2649,19 +2673,26 @@ function library:AddWindow(text)
 			local ischanging = false;
 			game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
 				if not gp then 
-					if (a.KeyCode.Name == KeyCode or (typeof(KeyCode) == "EnumItem" and a.KeyCode == KeyCode) or a.KeyCode.Name == tostring(KeyCode)) and ischanging == false then 
+					local matches = false
+					if typeof(KeyCode) == "EnumItem" then
+						matches = (a.KeyCode == KeyCode or a.KeyCode.Name == KeyCode.Name)
+					else
+						matches = (a.KeyCode.Name == tostring(KeyCode))
+					end
+					if matches and ischanging == false then 
 						if kbEntry then
 							kbEntry:SetState(true)
-							task.delay(0.2, function()
+							task.delay(0.25, function()
 								if kbEntry then kbEntry:SetState(false) end
 							end)
 						end
 						if library.KeybindNotifications then
 							pcall(function()
 								library:Notify({
-									Title = "Keybind",
-									Text = Text .. " [" .. formatKeyName(KeyCode) .. "]",
-									Duration = 1.4
+									Title = Text,
+									Text = "Açıldı / Tetiklendi [" .. formatKeyName(KeyCode) .. "]",
+									Duration = 1.5,
+									Color = Color3.fromRGB(80, 220, 120)
 								})
 							end)
 						end
@@ -2694,9 +2725,10 @@ function library:AddWindow(text)
 					if library.KeybindNotifications then
 						pcall(function()
 							library:Notify({
-								Title = "Keybind Changed",
-								Text = Text .. " -> [" .. formatKeyName(v1.KeyCode) .. "]",
-								Duration = 1.8
+								Title = Text,
+								Text = "Tuş Atandı -> [" .. formatKeyName(v1.KeyCode) .. "]",
+								Duration = 1.8,
+								Color = Color3.fromRGB(91, 133, 197)
 							})
 						end)
 					end
