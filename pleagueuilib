@@ -3,6 +3,7 @@
 
 
 local PCR_1 = Instance.new("ScreenGui")
+local PCR_OVERLAY = Instance.new("ScreenGui")  -- Keybindlist ve List için ayrı ScreenGui
 local TweenService = game:GetService('TweenService');
 local uis = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -562,6 +563,13 @@ PCR_1.Parent = game:GetService("CoreGui")
 PCR_1.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 PCR_1.ResetOnSpawn = false
 
+-- Overlay ScreenGui (Keybindlist, List, Watermark için - ana UI'den bağımsız)
+PCR_OVERLAY.Name = "PCR_OVERLAY"
+PCR_OVERLAY.Parent = game:GetService("CoreGui")
+PCR_OVERLAY.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+PCR_OVERLAY.ResetOnSpawn = false
+PCR_OVERLAY.DisplayOrder = 10  -- Ana UI'nin üstünde
+
 MAIN.Name = "MAIN"
 MAIN.Parent = PCR_1
 MAIN.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -873,7 +881,7 @@ function library:AddWatermark(Text, Options)
 	obj1.Name = "WatermarkMain"
 	obj1.Visible = StartVisible
 	obj1.ClipsDescendants = false
-	obj1.Parent = PCR_1
+	obj1.Parent = PCR_OVERLAY  -- Ana UI'den bağımsız
 	
 	-- Position ayarlama
 	if Position == "TopRight" then
@@ -1305,7 +1313,7 @@ function library:AddList(Options)
 	mainFrame.Name = "ListMain"
 	mainFrame.Visible = StartVisible
 	mainFrame.ClipsDescendants = true
-	mainFrame.Parent = PCR_1
+	mainFrame.Parent = PCR_OVERLAY  -- Ana UI'den bağımsız
 	
 	--[UIStroke - Border]--
 	local borderStroke = Instance.new("UIStroke", mainFrame)
@@ -2609,7 +2617,7 @@ function library:AddKeybindList(options)
 	KB_Main.ZIndex = 80
 	KB_Main.ClipsDescendants = true
 	KB_Main.Visible = isVisible
-	KB_Main.Parent = PCR_1
+	KB_Main.Parent = PCR_OVERLAY  -- Ana UI'den bağımsız
 
 	KB_Corner.CornerRadius = UDim.new(0, 5)
 	KB_Corner.Parent = KB_Main
@@ -4073,6 +4081,12 @@ function library:AddWindow(text)
 			if type(WarningConfig) == "table" and WarningConfig.NotificationType then
 				notificationType = WarningConfig.NotificationType
 			end
+			
+			-- RequireEnabled kontrolü (varsayılan: false)
+			local requireEnabled = false
+			if type(WarningConfig) == "table" and WarningConfig.RequireEnabled == true then
+				requireEnabled = true
+			end
 
 			local kbEntry = nil
 			local KeyCode = keybind -- aktif tuş referansı (rebind olunca burada güncellenir)
@@ -4111,51 +4125,57 @@ function library:AddWindow(text)
 				end
 
 				-- Bildirim sadece keybind kaynağından geldiğinde gönderilir (UI tıklamasında gönderilmez)
+				-- RequireEnabled: eğer özellik kapalıysa (activated=false) bildirim gönderme
 				if doCallback and library.KeybindNotifications and source == "keybind" then
-					pcall(function()
-						local fmt = library.KeybindNotificationFormat
-						local notifText, notifColor, notifDuration
-						
-						-- Custom format fonksiyonu varsa kullan
-						if fmt.CustomFormat then
-							local keyName = KeyCode and formatKeyName(KeyCode) or nil
-							notifText = fmt.CustomFormat(Text, activated, keyName)
-							notifColor = activated and fmt.EnabledColor or fmt.DisabledColor
-							notifDuration = fmt.Duration
-						else
-							-- Varsayılan format
-							local keyTag = ""
-							if fmt.ShowKey and KeyCode then
-								keyTag = " [" .. formatKeyName(KeyCode) .. "]"
-							end
+					-- RequireEnabled kontrolü
+					if requireEnabled and not activated then
+						-- Özellik kapalı ve RequireEnabled=true, bildirim gönderme
+					else
+						pcall(function()
+							local fmt = library.KeybindNotificationFormat
+							local notifText, notifColor, notifDuration
 							
-							-- NotificationType'a göre metin seç
-							if notificationType == "trigger" then
-								-- Trigger tipi: sadece "Triggered" göster
-								notifText = (fmt.TriggeredText or "Triggered") .. keyTag
-								notifColor = fmt.TriggeredColor or fmt.EnabledColor
+							-- Custom format fonksiyonu varsa kullan
+							if fmt.CustomFormat then
+								local keyName = KeyCode and formatKeyName(KeyCode) or nil
+								notifText = fmt.CustomFormat(Text, activated, keyName)
+								notifColor = activated and fmt.EnabledColor or fmt.DisabledColor
 								notifDuration = fmt.Duration
 							else
-								-- Toggle tipi: "Enabled" / "Disabled"
-								if activated then
-									notifText = fmt.EnabledText .. keyTag
-									notifColor = fmt.EnabledColor
+								-- Varsayılan format
+								local keyTag = ""
+								if fmt.ShowKey and KeyCode then
+									keyTag = " [" .. formatKeyName(KeyCode) .. "]"
+								end
+								
+								-- NotificationType'a göre metin seç
+								if notificationType == "trigger" then
+									-- Trigger tipi: sadece "Triggered" göster
+									notifText = (fmt.TriggeredText or "Triggered") .. keyTag
+									notifColor = fmt.TriggeredColor or fmt.EnabledColor
 									notifDuration = fmt.Duration
 								else
-									notifText = fmt.DisabledText .. keyTag
-									notifColor = fmt.DisabledColor
-									notifDuration = fmt.Duration * 0.83  -- Kapatma biraz daha kısa
+									-- Toggle tipi: "Enabled" / "Disabled"
+									if activated then
+										notifText = fmt.EnabledText .. keyTag
+										notifColor = fmt.EnabledColor
+										notifDuration = fmt.Duration
+									else
+										notifText = fmt.DisabledText .. keyTag
+										notifColor = fmt.DisabledColor
+										notifDuration = fmt.Duration * 0.83  -- Kapatma biraz daha kısa
+									end
 								end
 							end
-						end
-						
-						library:Notify({
-							Title = Text,
-							Text = notifText,
-							Duration = notifDuration,
-							Color = notifColor
-						})
-					end)
+							
+							library:Notify({
+								Title = Text,
+								Text = notifText,
+								Duration = notifDuration,
+								Color = notifColor
+							})
+						end)
+					end
 				end
 
 				if doCallback then
@@ -4466,6 +4486,9 @@ function library:AddWindow(text)
 			
 			-- NotificationType kontrolü (varsayılan: "trigger" - AddKeyBind için)
 			local notificationType = Options.NotificationType or "trigger"
+			
+			-- RequireEnabled kontrolü (varsayılan: nil - yani kontrol yok)
+			local requireEnabled = Options.RequireEnabled  -- function döndürür: function() return enabled end
 
 			local kbEntry = nil
 			if library.KeybindList and showInKeybindList then
@@ -4537,6 +4560,15 @@ function library:AddWindow(text)
 			game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
 				if not gp then 
 					if inputMatches(a, KeyCode) and ischanging == false then 
+						-- RequireEnabled kontrolü: eğer fonksiyon varsa ve false dönerse işlem yapma
+						if requireEnabled and type(requireEnabled) == "function" then
+							local isEnabled = requireEnabled()
+							if not isEnabled then
+								-- Özellik kapalı, bildirim ve action çalıştırma
+								return
+							end
+						end
+						
 						if kbEntry then
 							kbEntry:SetState(true)
 						end
