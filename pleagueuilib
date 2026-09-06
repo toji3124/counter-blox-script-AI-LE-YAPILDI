@@ -2973,8 +2973,10 @@ library.KeybindNotificationFormat = {
 	ShowKey = true,           -- Show key name in brackets
 	EnabledText = "Enabled",
 	DisabledText = "Disabled",
+	TriggeredText = "Triggered",  -- Tetikleme bildirimi için
 	EnabledColor = Color3.fromRGB(80, 220, 120),
 	DisabledColor = Color3.fromRGB(220, 80, 80),
+	TriggeredColor = Color3.fromRGB(100, 180, 255),  -- Mavi trigger rengi
 	Duration = 1.8,
 	-- Custom format fonksiyonu (opsiyonel)
 	-- CustomFormat = function(featureName, isEnabled, keyName) return "text" end
@@ -2985,8 +2987,10 @@ function library:SetKeybindNotificationFormat(options)
 	if options.ShowKey ~= nil then library.KeybindNotificationFormat.ShowKey = options.ShowKey end
 	if options.EnabledText then library.KeybindNotificationFormat.EnabledText = options.EnabledText end
 	if options.DisabledText then library.KeybindNotificationFormat.DisabledText = options.DisabledText end
+	if options.TriggeredText then library.KeybindNotificationFormat.TriggeredText = options.TriggeredText end
 	if options.EnabledColor then library.KeybindNotificationFormat.EnabledColor = options.EnabledColor end
 	if options.DisabledColor then library.KeybindNotificationFormat.DisabledColor = options.DisabledColor end
+	if options.TriggeredColor then library.KeybindNotificationFormat.TriggeredColor = options.TriggeredColor end
 	if options.Duration then library.KeybindNotificationFormat.Duration = options.Duration end
 	if options.CustomFormat then library.KeybindNotificationFormat.CustomFormat = options.CustomFormat end
 end
@@ -4063,6 +4067,12 @@ function library:AddWindow(text)
 			if type(WarningConfig) == "table" and WarningConfig.ShowInKeybindList ~= nil then
 				showInKeybindList = WarningConfig.ShowInKeybindList
 			end
+			
+			-- NotificationType kontrolü (varsayılan: "toggle")
+			local notificationType = "toggle"  -- "toggle" veya "trigger"
+			if type(WarningConfig) == "table" and WarningConfig.NotificationType then
+				notificationType = WarningConfig.NotificationType
+			end
 
 			local kbEntry = nil
 			local KeyCode = keybind -- aktif tuş referansı (rebind olunca burada güncellenir)
@@ -4119,14 +4129,23 @@ function library:AddWindow(text)
 								keyTag = " [" .. formatKeyName(KeyCode) .. "]"
 							end
 							
-							if activated then
-								notifText = fmt.EnabledText .. keyTag
-								notifColor = fmt.EnabledColor
+							-- NotificationType'a göre metin seç
+							if notificationType == "trigger" then
+								-- Trigger tipi: sadece "Triggered" göster
+								notifText = (fmt.TriggeredText or "Triggered") .. keyTag
+								notifColor = fmt.TriggeredColor or fmt.EnabledColor
 								notifDuration = fmt.Duration
 							else
-								notifText = fmt.DisabledText .. keyTag
-								notifColor = fmt.DisabledColor
-								notifDuration = fmt.Duration * 0.83  -- Kapatma biraz daha kısa
+								-- Toggle tipi: "Enabled" / "Disabled"
+								if activated then
+									notifText = fmt.EnabledText .. keyTag
+									notifColor = fmt.EnabledColor
+									notifDuration = fmt.Duration
+								else
+									notifText = fmt.DisabledText .. keyTag
+									notifColor = fmt.DisabledColor
+									notifDuration = fmt.Duration * 0.83  -- Kapatma biraz daha kısa
+								end
 							end
 						end
 						
@@ -4444,6 +4463,9 @@ function library:AddWindow(text)
 			if Options.ShowInKeybindList ~= nil then
 				showInKeybindList = Options.ShowInKeybindList
 			end
+			
+			-- NotificationType kontrolü (varsayılan: "trigger" - AddKeyBind için)
+			local notificationType = Options.NotificationType or "trigger"
 
 			local kbEntry = nil
 			if library.KeybindList and showInKeybindList then
@@ -4525,16 +4547,34 @@ function library:AddWindow(text)
 							pcall(function()
 								local fmt = library.KeybindNotificationFormat
 								local keyName = formatKeyName(KeyCode)
-								local notifText = fmt.CustomFormat 
-									and fmt.CustomFormat(Text, true, keyName)
-									or (fmt.ShowKey and (fmt.EnabledText .. " [" .. keyName .. "]") or fmt.EnabledText)
+								local notifText
 								
-								library:Notify({
-									Title = Text,
-									Text = notifText,
-									Duration = fmt.Duration * 0.83,
-									Color = fmt.EnabledColor
-								})
+								-- NotificationType'a göre metin oluştur
+								if notificationType == "trigger" then
+									-- Trigger: "Triggered [T]"
+									notifText = fmt.CustomFormat 
+										and fmt.CustomFormat(Text, true, keyName)
+										or ((fmt.TriggeredText or "Triggered") .. (fmt.ShowKey and (" [" .. keyName .. "]") or ""))
+									
+									library:Notify({
+										Title = Text,
+										Text = notifText,
+										Duration = fmt.Duration * 0.83,
+										Color = fmt.TriggeredColor or fmt.EnabledColor
+									})
+								else
+									-- Toggle: "Enabled [T]"
+									notifText = fmt.CustomFormat 
+										and fmt.CustomFormat(Text, true, keyName)
+										or (fmt.EnabledText .. (fmt.ShowKey and (" [" .. keyName .. "]") or ""))
+									
+									library:Notify({
+										Title = Text,
+										Text = notifText,
+										Duration = fmt.Duration * 0.83,
+										Color = fmt.EnabledColor
+									})
+								end
 							end)
 						end
 						pcall(function()
