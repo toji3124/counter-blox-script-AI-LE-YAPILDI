@@ -850,6 +850,7 @@ function library:AddWatermark(Text, Options)
 	local StartVisible = Options.Visible ~= false -- varsayılan true
 	local ShowFPS = Options.ShowFPS ~= false -- varsayılan true
 	local ShowPing = Options.ShowPing ~= false -- varsayılan true
+	local ShowGame = Options.ShowGame ~= false -- varsayılan true (OYUN ADI)
 	local Position = Options.Position or "TopRight" -- "TopLeft", "TopRight", "BottomLeft", "BottomRight"
 	
 	-- FPS/Ping tracking
@@ -858,11 +859,14 @@ function library:AddWatermark(Text, Options)
 	local fpsFrameCount = 0
 	local fpsLastUpdate = tick()
 	
+	-- Oyun adını al
+	local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Unknown Game"
+	
 	--[MAIN WATERMARK FRAME]--
 	local obj1 = Instance.new("Frame")
 	obj1.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 	obj1.BorderSizePixel = 0
-	obj1.Size = UDim2.new(0, 250, 0, 36)
+	obj1.Size = UDim2.new(0, 250, 0, ShowGame and 50 or 36) -- Oyun gösteriliyorsa daha yüksek
 	obj1.ZIndex = 100
 	obj1.Name = "WatermarkMain"
 	obj1.Visible = StartVisible
@@ -923,21 +927,38 @@ function library:AddWatermark(Text, Options)
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.TextSize = 14
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.TextStrokeTransparency = 1  -- Stroke kapalı (1 = tamamen transparan)
+	titleLabel.TextStrokeTransparency = 1
 	titleLabel.ZIndex = 102
+	
+	--[GAME LABEL]--
+	local gameLabel
+	if ShowGame then
+		gameLabel = Instance.new("TextLabel", obj3)
+		gameLabel.BackgroundTransparency = 1
+		gameLabel.BorderSizePixel = 0
+		gameLabel.Position = UDim2.new(0, 8, 0, 18)
+		gameLabel.Size = UDim2.new(1, -16, 0, 12)
+		gameLabel.Font = Enum.Font.GothamSemibold
+		gameLabel.Text = " " .. gameName
+		gameLabel.TextColor3 = Color3.fromRGB(91, 133, 197)
+		gameLabel.TextSize = 11
+		gameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		gameLabel.TextStrokeTransparency = 1
+		gameLabel.ZIndex = 102
+	end
 	
 	--[INFO LABEL (FPS + PING)]--
 	local infoLabel = Instance.new("TextLabel", obj3)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.BorderSizePixel = 0
-	infoLabel.Position = UDim2.new(0, 8, 0, 18)
+	infoLabel.Position = UDim2.new(0, 8, 0, ShowGame and 32 or 18)
 	infoLabel.Size = UDim2.new(1, -16, 0, 14)
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.Text = ""
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	infoLabel.TextSize = 12
 	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-	infoLabel.TextStrokeTransparency = 1  -- Stroke kapalı (1 = tamamen transparan)
+	infoLabel.TextStrokeTransparency = 1
 	infoLabel.ZIndex = 102
 	
 	--[ACCENT BAR]--
@@ -989,14 +1010,26 @@ function library:AddWatermark(Text, Options)
 		infoLabel.Text = table.concat(infoText, "  |  ")
 		
 		-- Dinamik boyut ayarlama
-		local textWidth = math.max(
-			game:GetService("TextService"):GetTextSize(titleLabel.Text, titleLabel.TextSize, titleLabel.Font, Vector2.new(1000, 20)).X,
-			game:GetService("TextService"):GetTextSize(infoLabel.Text, infoLabel.TextSize, infoLabel.Font, Vector2.new(1000, 20)).X
-		)
-		local newWidth = math.max(200, textWidth + 32)
+		local maxWidth = titleLabel.Text
+		if ShowGame and gameLabel then
+			local gameTextWidth = game:GetService("TextService"):GetTextSize(gameLabel.Text, gameLabel.TextSize, gameLabel.Font, Vector2.new(1000, 20)).X
+			maxWidth = math.max(
+				game:GetService("TextService"):GetTextSize(titleLabel.Text, titleLabel.TextSize, titleLabel.Font, Vector2.new(1000, 20)).X,
+				gameTextWidth,
+				game:GetService("TextService"):GetTextSize(infoLabel.Text, infoLabel.TextSize, infoLabel.Font, Vector2.new(1000, 20)).X
+			)
+		else
+			maxWidth = math.max(
+				game:GetService("TextService"):GetTextSize(titleLabel.Text, titleLabel.TextSize, titleLabel.Font, Vector2.new(1000, 20)).X,
+				game:GetService("TextService"):GetTextSize(infoLabel.Text, infoLabel.TextSize, infoLabel.Font, Vector2.new(1000, 20)).X
+			)
+		end
+		
+		local newWidth = math.max(200, maxWidth + 32)
+		local newHeight = ShowGame and 50 or 36
 		
 		TweenService:Create(obj1, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, newWidth, 0, 36)
+			Size = UDim2.new(0, newWidth, 0, newHeight)
 		}):Play()
 	end
 	
