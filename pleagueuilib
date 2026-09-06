@@ -4057,10 +4057,16 @@ function library:AddWindow(text)
 			Text = Text or 'Not Defined'
 			local activated = (Enabled == true)
 			local y = {};
+			
+			-- ShowInKeybindList kontrolü (varsayılan: true)
+			local showInKeybindList = true
+			if type(WarningConfig) == "table" and WarningConfig.ShowInKeybindList ~= nil then
+				showInKeybindList = WarningConfig.ShowInKeybindList
+			end
 
 			local kbEntry = nil
 			local KeyCode = keybind -- aktif tuş referansı (rebind olunca burada güncellenir)
-			if keybind and library.KeybindList then
+			if keybind and library.KeybindList and showInKeybindList then
 				kbEntry = library.KeybindList:Add(Text, keybind, activated, "[Toggle]")
 			end
 
@@ -4427,13 +4433,20 @@ function library:AddWindow(text)
 				OpenedColor(Text,ColourDisplay,Action,Color)
 			end)
 		end
-		function inside:AddKeyBind(Text,KeyCode,Action)
+		function inside:AddKeyBind(Text,KeyCode,Action,Options)
 			Text = Text or 'Not Defined'
 			KeyCode = KeyCode or Enum.KeyCode.RightAlt
 			Action = Action or function() end
+			Options = Options or {}
+			
+			-- ShowInKeybindList kontrolü (varsayılan: true)
+			local showInKeybindList = true
+			if Options.ShowInKeybindList ~= nil then
+				showInKeybindList = Options.ShowInKeybindList
+			end
 
 			local kbEntry = nil
-			if library.KeybindList then
+			if library.KeybindList and showInKeybindList then
 				kbEntry = library.KeybindList:Add(Text, KeyCode, false, "[Hold]")
 			end
 
