@@ -1955,7 +1955,7 @@ function library:_ShowNotify(cfg)
 		})
 		self.BarTween:Play()
 
-		task.task.spawn(function()
+		task.spawn(function()
 			local step = 0.05
 			while not self.Closed and self.Token == currentToken and self.Elapsed < self.Dur do
 				task.wait(step)
@@ -3472,17 +3472,22 @@ function library:AddWindow(text)
 			if v:IsA('Frame') or v:IsA('ScrollingFrame') then
 				if v.Visible == true and v ~= HOLDER then
 					-- Eski sekmeyi fade-out yap
-					TweenService:Create(v, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					local oldTab = v
+					TweenService:Create(oldTab, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 						GroupTransparency = 1
 					}):Play()
-					task.wait(0.2)
-					v.Visible = false
-					v.GroupTransparency = 0 -- Reset for next show
+					
+					-- Fade-out bitince gizle (async)
+					task.spawn(function()
+						task.wait(0.2)
+						oldTab.Visible = false
+						oldTab.GroupTransparency = 0 -- Reset for next show
+					end)
 				end
 			end
 		end
 		
-		-- Yeni sekmeyi göster ve animasyon uygula
+		-- Yeni sekmeyi göster ve animasyon uygula (hemen başlat)
 		HOLDER.Visible = true
 		HOLDER.GroupTransparency = 1
 		HOLDER.Position = UDim2.new(0.05, 0, 0.019, 0) -- Başlangıç: biraz sağda
