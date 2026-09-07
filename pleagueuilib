@@ -6,6 +6,33 @@ local PCR_1 = Instance.new("ScreenGui")
 local PCR_OVERLAY = Instance.new("ScreenGui")  -- Keybindlist ve List için ayrı ScreenGui
 local TweenService = game:GetService('TweenService');
 local uis = game:GetService("UserInputService")
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- CONNECTION TRACKING SYSTEM (DestroyUI için)
+-- ════════════════════════════════════════════════════════════════════════════
+local ConnectionTracker = {
+	Connections = {}
+}
+
+function ConnectionTracker:Add(connection)
+	table.insert(self.Connections, connection)
+	return connection
+end
+
+function ConnectionTracker:DisconnectAll()
+	for _, conn in ipairs(self.Connections) do
+		pcall(function()
+			conn:Disconnect()
+		end)
+	end
+	self.Connections = {}
+end
+
+-- Helper: Wrap all :Connect() calls with tracking
+local function TrackedConnect(signal, fn)
+	return ConnectionTracker:Add(signal:Connect(fn))
+end
+
 local RunService = game:GetService("RunService")
 
 local function createInstance(class, props)
@@ -125,7 +152,7 @@ local function draggable(obj,extern,parented)
 	globals.dragging=nil
 	globals.uiorigin=nil
 	globals.morigin=nil
-	obj.InputBegan:Connect(function(input)
+	TrackedConnect(obj.InputBegan, function(input)
 
 		if input.UserInputType == Enum.UserInputType.MouseButton1 and souid == false and obj.ZIndex >= index then
 			souid = true
@@ -138,7 +165,7 @@ local function draggable(obj,extern,parented)
 			globals.morigin = input.Position
 
 			local connection 
-			connection = input.Changed:Connect(function()
+			connection = TrackedConnect(input.Changed, function()
 				if input.UserInputState == Enum.UserInputState.End then
 					globals.dragging = false
 					souid = false
@@ -161,7 +188,7 @@ local function draggable(obj,extern,parented)
 				globals.uiorigin = obj.Position
 				globals.morigin = input.Position
 				local connection 
-				connection = input.Changed:Connect(function()
+				connection = TrackedConnect(input.Changed, function()
 					if input.UserInputState == Enum.UserInputState.End then
 						globals.dragging = false
 						souid = false
@@ -174,7 +201,7 @@ local function draggable(obj,extern,parented)
 			end
 		end
 	end)
-	uis.InputChanged:Connect(function(input)
+	TrackedConnect(uis.InputChanged, function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement and globals.dragging then
 			if extern then
 				if isColliding(obj,parented) then
@@ -408,11 +435,11 @@ function OpenedColor(text,ColourDisplay,Action,def)
 	linedecoupper.ZIndex = 3
 	if COLORPALLETE.Visible == true then
 		ANIMATEFRAME01:TweenPosition(UDim2.new(-0.026,0,-0.007,0),'Out','Quint',0.2,true);
-		wait(.2)
+		task.wait(.2)
 		COLORPALLETE.BackgroundTransparency = 1;
 		Holder.Visible = false
 		ANIMATEFRAME01:TweenPosition(UDim2.new(1.077,0,-0.007,0),'Out','Quint',0.2,true);
-		wait(.2)
+		task.wait(.2)
 		COLORPALLETE.Visible = false
 		ANIMATEFRAME01.Visible = false
 	end
@@ -423,39 +450,38 @@ function OpenedColor(text,ColourDisplay,Action,def)
 	Holder.Visible = false
 
 	ANIMATEFRAME01:TweenPosition(UDim2.new(-0.026,0,-0.007,0),'Out','Quint',0.2,true);
-	wait(.2)
+	task.wait(.2)
 	COLORPALLETE.Visible = true
 	COLORPALLETE.BackgroundTransparency = 0;
 	Holder.Visible = true
 	ANIMATEFRAME01:TweenPosition(UDim2.new(1.077,0,-0.007,0),'Out','Quint',0.2,true);
-	wait(.2)
+	task.wait(.2)
 	ANIMATEFRAME01.Position = UDim2.new(-1.085,0,-0.013,0)
 	local hsv;
 
-	SETCOLOR.MouseButton1Click:Connect(function()
+	TrackedConnect(SETCOLOR.MouseButton1Click, function()
 		ANIMATEFRAME01:TweenPosition(UDim2.new(-0.026,0,-0.007,0),'Out','Quint',0.2,true);
-		wait(.2)
+		task.wait(.2)
 		COLORPALLETE.BackgroundTransparency = 1;
 		Holder.Visible = false
 		ANIMATEFRAME01:TweenPosition(UDim2.new(1.077,0,-0.007,0),'Out','Quint',0.2,true);
-		wait(.2)
+		task.wait(.2)
 		ANIMATEFRAME01.Visible = false
 		ColourDisplay.ImageColor3 = ColourDisplayBIG.ImageColor3
 		COLORPALLETE.Visible = false
 
-		pcall(function()
-            Action( Color3.fromRGB(ColourDisplayBIG.ImageColor3.R * 200 ,ColourDisplayBIG.ImageColor3.G * 200 ,ColourDisplayBIG.ImageColor3.B* 200) )
-        end)
+		local success, err = pcall(function() Action( Color3.fromRGB(ColourDisplayBIG.ImageColor3.R * 200 ,ColourDisplayBIG.ImageColor3.G * 200 ,ColourDisplayBIG.ImageColor3.B* 200) ) end)
+		if not success then warn("[Plague UI] Callback error:", err) end
 
 	end)
 
-	RESETALL.MouseButton1Click:Connect(function()
+	TrackedConnect(RESETALL.MouseButton1Click, function()
 		ANIMATEFRAME01:TweenPosition(UDim2.new(-0.026,0,-0.007,0),'Out','Quint',0.2,true);
-		wait(.2)
+		task.wait(.2)
 		COLORPALLETE.BackgroundTransparency = 1;
 		Holder.Visible = false
 		ANIMATEFRAME01:TweenPosition(UDim2.new(1.077,0,-0.007,0),'Out','Quint',0.2,true);
-		wait(.2)
+		task.wait(.2)
 		COLORPALLETE.Visible = false
 
 		ANIMATEFRAME01.Visible = false
@@ -490,16 +516,16 @@ function OpenedColor(text,ColourDisplay,Action,def)
 	end
 
 
-	ColourWheel.MouseButton1Down:Connect(function()
+	TrackedConnect(ColourWheel.MouseButton1Down, function()
 		buttonDown = true
 	end)
 
-	DarknessPicker.MouseButton1Down:Connect(function()
+	TrackedConnect(DarknessPicker.MouseButton1Down, function()
 		movingSlider = true
 	end)
 
 
-	uis.InputEnded:Connect(function(input)
+	TrackedConnect(uis.InputEnded, function(input)
 
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 
@@ -508,7 +534,7 @@ function OpenedColor(text,ColourDisplay,Action,def)
 	end)
 
 
-	uis.InputChanged:Connect(function(input)
+	TrackedConnect(uis.InputChanged, function(input)
 
 		if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
 
@@ -686,7 +712,7 @@ limit1.Size = UDim2.new(0, 588, 0, 364)
 limit1.ZIndex = 5
 
 
-repeat wait() until game.Players.LocalPlayer
+repeat task.wait() until game.Players.LocalPlayer
 
 
 
@@ -715,7 +741,7 @@ function AddRipple(button,ael,ayo)
 	button.ClipsDescendants = true
 	local obj = button
 	local function Ripple()
-		spawn(
+		task.spawn(
 			function()
 				local Mouse = game.Players.LocalPlayer:GetMouse()
 				local Circle = Instance.new("ImageLabel")
@@ -747,7 +773,7 @@ function AddRipple(button,ael,ayo)
 				)
 				for i = 1, 15 do
 					Circle.ImageTransparency = Circle.ImageTransparency + 0.05
-					wait()
+					task.wait()
 				end
 				Circle:Destroy()
 			end
@@ -795,7 +821,7 @@ function AddRipple(button,ael,ayo)
 
 		local backgroundFadeOut = TweenService:Create(ael, tweenInfo, {TextColor3 = Color3.fromRGB(197, 197, 197)})
 
-		repeat wait() until not hovering
+		repeat task.wait() until not hovering
 
 		backgroundFadeOut:Play()
 	end
@@ -805,11 +831,11 @@ function AddRipple(button,ael,ayo)
 		hovering = false
 		active = false
 	end
-	button.MouseButton1Down:Connect(OnMouseButton1Down)
-	button.MouseButton1Up:Connect(OnMouseButton1Up)
-	button.MouseEnter:Connect(OnMouseEnter)
-	button.MouseLeave:Connect(OnMouseLeave)
-	button.MouseButton1Click:Connect(Ripple)
+	TrackedConnect(button.MouseButton1Down, OnMouseButton1Down)
+	TrackedConnect(button.MouseButton1Up, OnMouseButton1Up)
+	TrackedConnect(button.MouseEnter, OnMouseEnter)
+	TrackedConnect(button.MouseLeave, OnMouseLeave)
+	TrackedConnect(button.MouseButton1Click, Ripple)
 end
 local function getsize(frame)
 	local size = 0;
@@ -833,6 +859,18 @@ local function getsize(frame)
 end
 library.fps = ''
 
+-- CONFIG REGISTRY SYSTEM
+-- ════════════════════════════════════════════════════════════════════════════
+library.ConfigRegistry = {}
+
+function library:RegisterConfigItem(key, itemType, getter, setter)
+	self.ConfigRegistry[key] = {
+		Type = itemType,
+		Get = getter,
+		Set = setter
+	}
+end
+
 local s,e = pcall(function()
 	local k = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
 end)
@@ -840,8 +878,8 @@ end)
 if not s or e then
 	library.ms = 'err'
 else
-	spawn(function()
-		game:GetService("RunService").RenderStepped:Connect(function()
+	task.spawn(function()
+		TrackedConnect(game:GetService("RunService").RenderStepped, function()
 			local plr = game:GetService('Players').LocalPlayer
 			library.ms =  game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
 		end)
@@ -914,7 +952,7 @@ function library:AddWatermark(Text, Options)
 		glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		
 		-- Glow animasyonu
-		task.spawn(function()
+		task.task.spawn(function()
 			while obj1 and obj1.Parent do
 				for i = 0, 1, 0.05 do
 					if not obj1 or not obj1.Parent then break end
@@ -1068,7 +1106,7 @@ function library:AddWatermark(Text, Options)
 	-- FPS tracker
 	local fpsConnection
 	if ShowFPS then
-		fpsConnection = RunService.RenderStepped:Connect(function()
+		fpsConnection = TrackedConnect(RunService.RenderStepped, function()
 			fpsFrameCount = fpsFrameCount + 1
 			local now = tick()
 			if now - fpsLastUpdate >= 1 then
@@ -1119,7 +1157,7 @@ function library:AddWatermark(Text, Options)
 	-- Update loop
 	local updateConnection
 	if ShowFPS or ShowPing then
-		updateConnection = RunService.Heartbeat:Connect(function()
+		updateConnection = TrackedConnect(RunService.Heartbeat, function()
 			if obj1.Visible then
 				updateInfoText()
 			end
@@ -1330,7 +1368,7 @@ function library:AddList(Options)
 		glowStroke.Transparency = 0.5
 		glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		
-		task.spawn(function()
+		task.task.spawn(function()
 			while mainFrame and mainFrame.Parent do
 				for i = 0, 1, 0.05 do
 					if not mainFrame or not mainFrame.Parent then break end
@@ -1707,6 +1745,9 @@ local function notifyActiveCount()
 	return count
 end
 
+-- Event-driven notification queue
+local NOTIFY_QUEUE_EVENT = Instance.new("BindableEvent")
+
 local function notifyCleanActive()
 	local clean = {}
 	for _, item in ipairs(NOTIFY_ACTIVE) do
@@ -1729,12 +1770,19 @@ local function processQueue()
 				if cfg then
 					library:_ShowNotify(cfg)
 				end
+			else
+				-- Stack full, wait a bit
+				task.wait(0.05)
 			end
-			task.wait(0.08)
 		end
 		NOTIFY_PROCESSING = false
 	end)
 end
+
+-- Event listener for queue changes
+TrackedConnect(NOTIFY_QUEUE_EVENT.Event, function()
+	processQueue()
+end)
 
 function library:_ShowNotify(cfg)
 	local title      = cfg.title    or "Notification"
@@ -1885,7 +1933,7 @@ function library:_ShowNotify(cfg)
 		task.delay(0.22, function()
 			pcall(function() Card:Destroy() end)
 			notifyCleanActive()
-			processQueue()
+			NOTIFY_QUEUE_EVENT:Fire() -- Trigger queue processing
 		end)
 	end
 
@@ -1907,7 +1955,7 @@ function library:_ShowNotify(cfg)
 		})
 		self.BarTween:Play()
 
-		task.spawn(function()
+		task.task.spawn(function()
 			local step = 0.05
 			while not self.Closed and self.Token == currentToken and self.Elapsed < self.Dur do
 				task.wait(step)
@@ -1973,7 +2021,7 @@ function library:_ShowNotify(cfg)
 	end
 
 	-- Hover işlemleri
-	ClickBtn.MouseEnter:Connect(function()
+	TrackedConnect(ClickBtn.MouseEnter, function()
 		if cardObj.Closed then return end
 		cardObj.Paused = true
 		if cardObj.BarTween then pcall(function() cardObj.BarTween:Cancel() end) end
@@ -1985,7 +2033,7 @@ function library:_ShowNotify(cfg)
 		end)
 	end)
 
-	ClickBtn.MouseLeave:Connect(function()
+	TrackedConnect(ClickBtn.MouseLeave, function()
 		if cardObj.Closed then return end
 		cardObj.Paused = false
 		pcall(function()
@@ -2003,7 +2051,7 @@ function library:_ShowNotify(cfg)
 		end
 	end)
 
-	ClickBtn.MouseButton1Click:Connect(function()
+	TrackedConnect(ClickBtn.MouseButton1Click, function()
 		if onClick then pcall(onClick) end
 		cardObj:Close()
 	end)
@@ -2066,7 +2114,7 @@ function library:Notify(titleOrConfig, text, duration)
 		return library:_ShowNotify(cfg)
 	else
 		NOTIFY_QUEUE[#NOTIFY_QUEUE+1] = cfg
-		processQueue()
+		NOTIFY_QUEUE_EVENT:Fire() -- Event-driven trigger
 		return nil
 	end
 end
@@ -2330,8 +2378,8 @@ function library:ShowWarning(config)
 		end
 	end
 
-	CheckBox.MouseButton1Click:Connect(toggleDismissCheck)
-	CheckLabel.MouseButton1Click:Connect(toggleDismissCheck)
+	TrackedConnect(CheckBox.MouseButton1Click, toggleDismissCheck)
+	TrackedConnect(CheckLabel.MouseButton1Click, toggleDismissCheck)
 
 	-- ── Buton Tutucu ──────────────────────────────────────────────
 	local BtnHolder = Instance.new("Frame")
@@ -2417,7 +2465,7 @@ function library:ShowWarning(config)
 		end)
 	end
 
-	ConfirmBtn.MouseButton1Click:Connect(function()
+	TrackedConnect(ConfirmBtn.MouseButton1Click, function()
 		if isDismissChecked and warningKey then
 			library.DismissedWarnings[warningKey] = true
 		end
@@ -2425,42 +2473,42 @@ function library:ShowWarning(config)
 		if onConfirm then pcall(onConfirm) end
 	end)
 
-	CancelBtn.MouseButton1Click:Connect(function()
+	TrackedConnect(CancelBtn.MouseButton1Click, function()
 		closeDialog()
 		if onCancel then pcall(onCancel) end
 	end)
 
-	CloseBtn.MouseButton1Click:Connect(function()
+	TrackedConnect(CloseBtn.MouseButton1Click, function()
 		closeDialog()
 		if onCancel then pcall(onCancel) end
 	end)
 
 	-- Hover Animasyonları (Plague renk paletine uygun)
-	ConfirmBtn.MouseEnter:Connect(function()
+	TrackedConnect(ConfirmBtn.MouseEnter, function()
 		if closed then return end
 		TweenService:Create(ConfirmBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(110, 152, 216)}):Play()
 	end)
-	ConfirmBtn.MouseLeave:Connect(function()
+	TrackedConnect(ConfirmBtn.MouseLeave, function()
 		if closed then return end
 		TweenService:Create(ConfirmBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(91, 133, 197)}):Play()
 	end)
 
-	CancelBtn.MouseEnter:Connect(function()
+	TrackedConnect(CancelBtn.MouseEnter, function()
 		if closed then return end
 		TweenService:Create(CancelBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(42, 42, 42)}):Play()
 		TweenService:Create(CancelBtn, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(220, 220, 220)}):Play()
 	end)
-	CancelBtn.MouseLeave:Connect(function()
+	TrackedConnect(CancelBtn.MouseLeave, function()
 		if closed then return end
 		TweenService:Create(CancelBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(33, 33, 33)}):Play()
 		TweenService:Create(CancelBtn, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(180, 180, 180)}):Play()
 	end)
 
-	CloseBtn.MouseEnter:Connect(function()
+	TrackedConnect(CloseBtn.MouseEnter, function()
 		if closed then return end
 		TweenService:Create(CloseBtn, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
 	end)
-	CloseBtn.MouseLeave:Connect(function()
+	TrackedConnect(CloseBtn.MouseLeave, function()
 		if closed then return end
 		TweenService:Create(CloseBtn, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(138, 138, 138)}):Play()
 	end)
@@ -2636,7 +2684,7 @@ function library:AddKeybindList(options)
 		KB_GlowStroke.Transparency = 0.5
 		KB_GlowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		
-		task.spawn(function()
+		task.task.spawn(function()
 			while KB_Main and KB_Main.Parent do
 				for i = 0, 1, 0.05 do
 					if not KB_Main or not KB_Main.Parent then break end
@@ -2726,12 +2774,12 @@ function library:AddKeybindList(options)
 	local dragStart = nil
 	local startPos = nil
 
-	KB_Main.InputBegan:Connect(function(input)
+	TrackedConnect(KB_Main.InputBegan, function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
 			dragStart = input.Position
 			startPos = KB_Main.Position
-			input.Changed:Connect(function()
+			TrackedConnect(input.Changed, function()
 				if input.UserInputState == Enum.UserInputState.End then
 					dragging = false
 				end
@@ -2739,13 +2787,13 @@ function library:AddKeybindList(options)
 		end
 	end)
 
-	KB_Main.InputChanged:Connect(function(input)
+	TrackedConnect(KB_Main.InputChanged, function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
 			dragInput = input
 		end
 	end)
 
-	uis.InputChanged:Connect(function(input)
+	TrackedConnect(uis.InputChanged, function(input)
 		if input == dragInput and dragging then
 			local delta = input.Position - dragStart
 			KB_Main.Position = UDim2.new(
@@ -3227,7 +3275,7 @@ function library:AddHitLog(configOrText, tag, tagColor, duration)
 		TweenService:Create(TagLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
 		TweenService:Create(TextLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
 		fadeTween:Play()
-		fadeTween.Completed:Connect(function()
+		TrackedConnect(fadeTween.Completed, function()
 			for idx, item in ipairs(HitLogModule.ActiveLogs) do
 				if item == logItem then
 					table.remove(HitLogModule.ActiveLogs, idx)
@@ -3315,6 +3363,13 @@ function library:Init(name)
         if v:IsA('Frame') or v:IsA('ScrollingFrame') then
             if v.Name == name then
                 v.Visible = true
+                -- İlk açılışta da animasyon uygula
+                v.GroupTransparency = 1
+                v.Position = UDim2.new(0.05, 0, 0.019, 0)
+                TweenService:Create(v, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    GroupTransparency = 0,
+                    Position = UDim2.new(0, 0, 0.019, 0)
+                }):Play()
             else
                 v.Visible = false
             end
@@ -3404,19 +3459,39 @@ function library:AddWindow(text)
 
 	local fghk = Instance.new("UIListLayout")
 
-	TEMPLATE_TEXT.MouseButton1Click:Connect(function()
+	TrackedConnect(TEMPLATE_TEXT.MouseButton1Click, function()
 		for i,v in pairs(Upper:GetChildren()) do
 			if v:IsA('TextButton') then
 				TweenService:Create(v , TweenInfo.new(0.26, Enum.EasingStyle.Quad    , Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(138, 138, 138)}):Play()	
 			end
 		end
 		TweenService:Create(TEMPLATE_TEXT , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(210, 210, 210)}):Play()	
+		
+		-- Animasyonlu tab geçişi: Fade-out eskiyi, Fade-in + Slide yeniyi
 		for i,v in pairs(limit1:GetChildren()) do
 			if v:IsA('Frame') or v:IsA('ScrollingFrame') then
-				v.Visible = false
+				if v.Visible == true and v ~= HOLDER then
+					-- Eski sekmeyi fade-out yap
+					TweenService:Create(v, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						GroupTransparency = 1
+					}):Play()
+					task.wait(0.2)
+					v.Visible = false
+					v.GroupTransparency = 0 -- Reset for next show
+				end
 			end
 		end
+		
+		-- Yeni sekmeyi göster ve animasyon uygula
 		HOLDER.Visible = true
+		HOLDER.GroupTransparency = 1
+		HOLDER.Position = UDim2.new(0.05, 0, 0.019, 0) -- Başlangıç: biraz sağda
+		
+		-- Fade-in + Slide animasyonu
+		TweenService:Create(HOLDER, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			GroupTransparency = 0,
+			Position = UDim2.new(0, 0, 0.019, 0) -- Normal konuma kay
+		}):Play()
 	end)
 
 	fghk.Name = "fghk"
@@ -3616,6 +3691,16 @@ function library:AddWindow(text)
 		--TweenService:Create(closeSection , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Rotation = 0}):Play()	
 		UpdateMainSize()
 
+		-- Helper function: kod tekrarını azaltmak için
+		local function ResizeSection()
+			SECTIONHOLDER.Size = UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X, SECTION2UILIB.AbsoluteContentSize.Y + 8) + UDim2.new(0,0,0,23)
+			_PARENT.Size = UDim2.new(_PARENT.Size.X.Scale, _PARENT.Size.X.Offset, 0, LIST.AbsoluteContentSize.Y + 15)
+			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X, SECTION2UILIB.AbsoluteContentSize.Y + 42), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true)
+			task.wait()
+			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X, LIST.AbsoluteContentSize.Y + 15), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true)
+			UpdateMainSize(nil, true)
+		end
+
 		function inside:AddTextBox(Text,placeholder, CTOF, Type, Action)
 
 			Text=Text or 'Not Defined'
@@ -3730,15 +3815,14 @@ function library:AddWindow(text)
 				if #PassBox.Text >= 21 then
 					PassBox.Text = string.sub(PassBox.Text,0,21)
 				end
-				spawn(
+				task.spawn(
 					function()
-						pcall(function()
-							Action(obj5.Text)
-						end)  
+						local success, err = pcall(function() Action(obj5.Text) end)
+						if not success then warn("[Plague UI] Callback error:", err) end
 					end)
 			end
 			local text = ''
-			obj5.Changed:Connect(function()
+			TrackedConnect(obj5.Changed, function()
 				if obj5.Text == nil or obj5.Text == ' ' or obj5.Text =='' then
 					obj2:TweenSize(UDim2.new(0,#obj5.PlaceholderText*6,0,16),'Out','Quint',0.4,true);
 					return
@@ -3749,13 +3833,7 @@ function library:AddWindow(text)
 				end
 			end)
 
-			SECTIONHOLDER.Size = UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 8) + UDim2.new(0,0,0,23)
-			_PARENT.Size = UDim2.new(_PARENT.Size.X.Scale, _PARENT.Size.X.Offset , 0 ,LIST.AbsoluteContentSize.Y + 15);
-
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 
 		end
  
@@ -3886,7 +3964,7 @@ function library:AddWindow(text)
 			obj9.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)), ColorSequenceKeypoint.new(1, Color3.new(0.533333, 0.533333, 0.533333))})
 
 			local st = def or Max/2
-			obj4.FocusLost:Connect(function(n)
+			TrackedConnect(obj4.FocusLost, function(n)
 				if n then
 					if obj4.Text == '' or obj4.Text == ' ' or obj4.Text:find(' ') or obj4.Text == nil then
 						Value = tonumber(obj4.Text)
@@ -3894,9 +3972,8 @@ function library:AddWindow(text)
 						local SliderDef = math.clamp(tonumber(obj4.Text), Min, Max) or math.clamp(50, Min, Max)
 						local DefaultScale =  (SliderDef - Min) / (Max - Min)
 						obj6.Size = UDim2.fromScale(DefaultScale,1)
-						pcall(function()
-							Action(Value)
-						end)
+						local success, err = pcall(function() Action(Value) end)
+						if not success then warn("[Plague UI] Callback error:", err) end
 						sendSliderNotify(Value)
 						return
 					end
@@ -3908,9 +3985,8 @@ function library:AddWindow(text)
 						local SliderDef = math.clamp(tonumber(obj4.Text), Min, Max) or math.clamp(50, Min, Max)
 						local DefaultScale =  (SliderDef - Min) / (Max - Min)
 						obj6.Size = UDim2.fromScale(DefaultScale,1)
-						pcall(function()
-							Action(Value)
-						end)
+						local success, err = pcall(function() Action(Value) end)
+						if not success then warn("[Plague UI] Callback error:", err) end
 						sendSliderNotify(Value)
 						return
 					end
@@ -3922,9 +3998,8 @@ function library:AddWindow(text)
 						local SliderDef = math.clamp(tonumber(obj4.Text), Min, Max) or math.clamp(50, Min, Max)
 						local DefaultScale =  (SliderDef - Min) / (Max - Min)
 						obj6.Size = UDim2.fromScale(DefaultScale,1)
-						pcall(function()
-							Action(Value)
-						end)
+						local success, err = pcall(function() Action(Value) end)
+						if not success then warn("[Plague UI] Callback error:", err) end
 						sendSliderNotify(Value)
 						return
 					end
@@ -3933,9 +4008,8 @@ function library:AddWindow(text)
 					local SliderDef = math.clamp(tonumber(obj4.Text), Min, Max) or math.clamp(50, Min, Max)
 					local DefaultScale =  (SliderDef - Min) / (Max - Min)
 					obj6.Size = UDim2.fromScale(DefaultScale,1)
-					pcall(function()
-						Action(Value)
-					end)
+					local success, err = pcall(function() Action(Value) end)
+					if not success then warn("[Plague UI] Callback error:", err) end
 					sendSliderNotify(Value)
 				else
 					obj4.Text = st 
@@ -3946,7 +4020,7 @@ function library:AddWindow(text)
 					return
 				end
 			end)
-			obj4.Changed:Connect(function()
+			TrackedConnect(obj4.Changed, function()
 				if #obj4.Text > 7 then
 					obj4.Text= st 
 					Value = tonumber(obj4.Text)
@@ -3956,32 +4030,31 @@ function library:AddWindow(text)
 					return
 				end
 			end)
-			obj3.MouseButton1Down:Connect(function()
+			TrackedConnect(obj3.MouseButton1Down, function()
 				TweenService:Create(obj8 , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Color = Color3.fromRGB(115, 115, 115)}):Play()
 				obj4.TextXAlignment = Enum.TextXAlignment.Right
 
-				Value = ((((tonumber(Max) - tonumber(Min)) / 244) * obj6.AbsoluteSize.X) + tonumber(Min)) or 0
+				local sliderWidth = obj3.AbsoluteSize.X -- Dynamic width
+				Value = ((((tonumber(Max) - tonumber(Min)) / sliderWidth) * obj6.AbsoluteSize.X) + tonumber(Min)) or 0
 				Value = (Value)
 				TweenService:Create(obj4, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
 
-				obj6.Size = UDim2.new(0, math.clamp(mouse.X - obj6.AbsolutePosition.X, 0, 244), 0, 13)
-				moveconnection = mouse.Move:Connect(function()
+				obj6.Size = UDim2.new(0, math.clamp(mouse.X - obj6.AbsolutePosition.X, 0, sliderWidth), 0, 13)
+				moveconnection = TrackedConnect(mouse.Move, function()
 					obj4.Text = ('%0.2f'):format(Value)
-					Value = ((((tonumber(Max) - tonumber(Min)) / 244) * obj6.AbsoluteSize.X) + tonumber(Min))
+					Value = ((((tonumber(Max) - tonumber(Min)) / sliderWidth) * obj6.AbsoluteSize.X) + tonumber(Min))
 					Value = (Value)
-					pcall(function()
-						Action(Value)
-					end)
-					obj6.Size = UDim2.new(0, math.clamp(mouse.X - obj6.AbsolutePosition.X, 0, 244), 0, 13)
+					local success, err = pcall(function() Action(Value) end)
+					if not success then warn("[Plague UI] Callback error:", err) end
+					obj6.Size = UDim2.new(0, math.clamp(mouse.X - obj6.AbsolutePosition.X, 0, sliderWidth), 0, 13)
 				end)
-				releaseconnection = uis.InputEnded:Connect(function(Mouse)
+				releaseconnection = TrackedConnect(uis.InputEnded, function(Mouse)
 					if Mouse.UserInputType == Enum.UserInputType.MouseButton1 then
-						Value = ((((tonumber(Max) - tonumber(Min)) / 244) * obj6.AbsoluteSize.X) + tonumber(Min))
+						Value = ((((tonumber(Max) - tonumber(Min)) / sliderWidth) * obj6.AbsoluteSize.X) + tonumber(Min))
 						Value =(Value)
-						pcall(function()
-							Action(Value)
-						end)
-						obj6.Size = UDim2.new(0, math.clamp(mouse.X - obj6.AbsolutePosition.X, 0, 244), 0, 13)
+						local success, err = pcall(function() Action(Value) end)
+						if not success then warn("[Plague UI] Callback error:", err) end
+						obj6.Size = UDim2.new(0, math.clamp(mouse.X - obj6.AbsolutePosition.X, 0, sliderWidth), 0, 13)
 						sendSliderNotify(Value)
 						moveconnection:Disconnect()
 						releaseconnection:Disconnect()
@@ -3990,20 +4063,15 @@ function library:AddWindow(text)
 				obj4.Text = ('%0.2f'):format(Value)
 			end)
 
-			obj3.MouseButton1Up:Connect(function()
+			TrackedConnect(obj3.MouseButton1Up, function()
 				TweenService:Create(obj8 , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Color = Color3.fromRGB(52, 52, 52)}):Play()
 				TweenService:Create(obj4, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(126, 126, 126)}):Play()
 			end)
-			obj3.MouseLeave:Connect(function()
+			TrackedConnect(obj3.MouseLeave, function()
 				TweenService:Create(obj4, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(126, 126, 126)}):Play()
 				TweenService:Create(obj8 , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Color = Color3.fromRGB(52, 52, 52)}):Play()
 			end)
-			SECTIONHOLDER.Size = UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 8) + UDim2.new(0,0,0,23)
-			_PARENT.Size = UDim2.new(_PARENT.Size.X.Scale, _PARENT.Size.X.Offset , 0 ,LIST.AbsoluteContentSize.Y + 15);
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 
 			local api = {}
 			function api:Set(val)
@@ -4013,6 +4081,14 @@ function library:AddWindow(text)
 				local DefaultScale = (val - Min) / (Max - Min)
 				obj6.Size = UDim2.fromScale(DefaultScale, 1)
 			end
+			
+			-- Register to config system
+			library:RegisterConfigItem(Text, "Slider", function()
+				return Value
+			end, function(value)
+				api:Set(value)
+			end)
+			
 			return api
 		end
 
@@ -4039,13 +4115,9 @@ function library:AddWindow(text)
 			
 			TextLabel.AutomaticSize = Enum.AutomaticSize.Y
 
-
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 		end
-		local function getsize(str)
+		local function getKeybindTextWidth(str)
 			local r = 0;
 			for i=1,#str do
 				r+=1
@@ -4184,10 +4256,9 @@ function library:AddWindow(text)
 				end
 
 				if doCallback then
-					spawn(function()
-						pcall(function()
-							Callback(activated)
-						end)
+					task.spawn(function()
+						local success, err = pcall(function() Callback(activated) end)
+						if not success then warn("[Plague UI] Callback error:", err) end
 					end)
 				end
 			end
@@ -4289,12 +4360,12 @@ function library:AddWindow(text)
 			h5.CornerRadius = UDim.new(0, 3)
 			h5.Name = "h5"
 			h5.Parent = KeyButton
-			KeyButton:TweenSize(UDim2.new(0,getsize(KeyButton.Text),0,15),'InOut','Quint',0.2,true)
+			KeyButton:TweenSize(UDim2.new(0,getKeybindTextWidth(KeyButton.Text),0,15),'InOut','Quint',0.2,true)
 
 			if keybind then
 				local ischanging = false;
 				-- KeyCode zaten üstte tanımlandı, burada tekrar tanımlamıyoruz
-				game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
+				TrackedConnect(game:GetService("UserInputService").InputBegan, function(a, gp) 
 					if not gp then 
 						if inputMatches(a, KeyCode) and ischanging == false then 
 							pcall(function()
@@ -4304,14 +4375,14 @@ function library:AddWindow(text)
 					end
 				end)
 
-				KeyButton.MouseButton1Click:connect(function() 
+				TrackedConnect(KeyButton.MouseButton1Click, function() 
 					game.TweenService:Create(KeyButton, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
 						BackgroundColor3 = Color3.fromRGB(34, 34, 34)
 					}):Play()
 					KeyButton.Text = ". . ."
-					KeyButton:TweenSize(UDim2.new(0,getsize(KeyButton.Text),0,13), "InOut", "Quint", 0.2, true)
+					KeyButton:TweenSize(UDim2.new(0,getKeybindTextWidth(KeyButton.Text),0,13), "InOut", "Quint", 0.2, true)
 
-					local v1 = game:GetService('UserInputService').InputBegan:wait();
+					local v1 = game:GetService('UserInputService').InputBegan:Wait();
 					-- Klavye veya fare tuşu - ikisini de kabul et
 					local newKey
 					if v1.KeyCode ~= Enum.KeyCode.Unknown then
@@ -4341,17 +4412,14 @@ function library:AddWindow(text)
 								})
 							end)
 						end
-						wait(.2)
+						task.wait(.2)
 						ischanging = false
 					end
 				end)
 			else
 				KeyButton.Visible = false
 			end
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 
 			function y:Set(val)
 				if activated ~= val then
@@ -4367,24 +4435,27 @@ function library:AddWindow(text)
 			y.KeybindItem = kbEntry
 
 			if activated then
-				spawn(function()
-					pcall(function()
-						Callback(true)
-					end)
+				task.spawn(function()
+					local success, err = pcall(function() Callback(true) end)
+					if not success then warn("[Plague UI] Callback error:", err) end
 				end)
 			end
 
-			Interactive.MouseButton1Click:Connect(Toggle)
-			Interactive.MouseEnter:Connect(function()
+			TrackedConnect(Interactive.MouseButton1Click, Toggle)
+			TrackedConnect(Interactive.MouseEnter, function()
 				TweenService:Create(UIStroke , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Color = Color3.fromRGB(115, 115, 115)}):Play()
 			end)
-			Interactive.MouseLeave:Connect(function()
+			TrackedConnect(Interactive.MouseLeave, function()
 				TweenService:Create(UIStroke , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {Color = Color3.fromRGB(52, 52, 52)}):Play()
 			end)
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
+
+			-- Register to config system
+			library:RegisterConfigItem(Text, "Toggle", function()
+				return activated
+			end, function(value)
+				y:Set(value)
+			end)
 
 			return y
 		end
@@ -4397,16 +4468,144 @@ function library:AddWindow(text)
 			obj1.Parent = HOLDER_2
 			local obj2 = Instance.new("UICorner", obj1)
 			obj2.CornerRadius = UDim.new(1, 10)
-			SECTIONHOLDER.Size = UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 8) + UDim2.new(0,0,0,23)
-			_PARENT.Size = UDim2.new(_PARENT.Size.X.Scale, _PARENT.Size.X.Offset , 0 ,LIST.AbsoluteContentSize.Y + 15);
-
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 
 
 		end
+		
+		function inside:AddInputBox(Text, DefaultValue, Callback, Options)
+			Text = Text or 'Not Defined'
+			DefaultValue = DefaultValue or ''
+			Callback = Callback or function() end
+			Options = Options or {}
+			
+			local NumbersOnly = Options.NumbersOnly or false
+			local Min = Options.Min
+			local Max = Options.Max
+			
+			--[TemplateInputBox]--
+			local InputFrame = Instance.new("Frame")
+			InputFrame.BackgroundTransparency = 1
+			InputFrame.BorderSizePixel = 0
+			InputFrame.Position = UDim2.new(0.155858055, 0, 0.392140955, 0)
+			InputFrame.Size = UDim2.new(0, 239, 0, 22)
+			InputFrame.ZIndex = 14
+			InputFrame.Name = "TemplateInputBox"
+			InputFrame.Parent = HOLDER_2
+			
+			--[TextLabel]--
+			local Label = Instance.new("TextLabel")
+			Label.BackgroundTransparency = 1
+			Label.BorderSizePixel = 0
+			Label.Position = UDim2.new(-0.00865958631, 0, 0.0133694736, 0)
+			Label.Size = UDim2.new(0, 169, 0, 24)
+			Label.ZIndex = 15
+			Label.Font = Enum.Font.SourceSansBold
+			Label.Text = Text
+			Label.TextColor3 = Color3.fromRGB(197, 197, 197)
+			Label.TextSize = 14
+			Label.TextXAlignment = Enum.TextXAlignment.Left
+			Label.Parent = InputFrame
+			
+			--[Input Box Background]--
+			local BoxBg = Instance.new("Frame")
+			BoxBg.AnchorPoint = Vector2.new(1, 0.5)
+			BoxBg.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+			BoxBg.BorderSizePixel = 0
+			BoxBg.Position = UDim2.new(1.02739561, 0, 0.546084344, 0)
+			BoxBg.Size = UDim2.new(0, 80, 0, 16)
+			BoxBg.ZIndex = 25
+			BoxBg.Parent = InputFrame
+			
+			local BoxStroke = Instance.new("UIStroke")
+			BoxStroke.Color = Color3.fromRGB(52, 52, 52)
+			BoxStroke.Parent = BoxBg
+			
+			local BoxCorner = Instance.new("UICorner")
+			BoxCorner.CornerRadius = UDim.new(0, 3)
+			BoxCorner.Parent = BoxBg
+			
+			--[TextBox]--
+			local InputBox = Instance.new("TextBox")
+			InputBox.BackgroundTransparency = 1
+			InputBox.BorderSizePixel = 0
+			InputBox.Size = UDim2.new(1, -6, 1, 0)
+			InputBox.Position = UDim2.new(0, 3, 0, 0)
+			InputBox.ZIndex = 28
+			InputBox.ClearTextOnFocus = false
+			InputBox.Font = Enum.Font.ArialBold
+			InputBox.Text = tostring(DefaultValue)
+			InputBox.PlaceholderText = "..."
+			InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+			InputBox.TextSize = 10
+			InputBox.TextXAlignment = Enum.TextXAlignment.Center
+			InputBox.Parent = BoxBg
+			
+			local function processInput(text)
+				if NumbersOnly then
+					text = text:gsub("[^0-9.-]", "")
+					local num = tonumber(text)
+					if num then
+						if Min and num < Min then num = Min end
+						if Max and num > Max then num = Max end
+						return tostring(num)
+					end
+					return text
+				end
+				return text
+			end
+			
+			TrackedConnect(InputBox.FocusLost, function(enterPressed)
+				local processed = processInput(InputBox.Text)
+				InputBox.Text = processed
+				
+				pcall(function()
+					if NumbersOnly then
+						Callback(tonumber(processed) or 0)
+					else
+						Callback(processed)
+					end
+				end)
+			end)
+			
+			TrackedConnect(InputBox:GetPropertyChangedSignal("Text"), function()
+				if NumbersOnly then
+					InputBox.Text = InputBox.Text:gsub("[^0-9.-]", "")
+				end
+			end)
+			
+			ResizeSection()
+			
+			local inputAPI = {
+				SetValue = function(self, value)
+					InputBox.Text = tostring(value)
+					pcall(function()
+						if NumbersOnly then
+							Callback(tonumber(value) or 0)
+						else
+							Callback(value)
+						end
+					end)
+				end,
+				GetValue = function(self)
+					if NumbersOnly then
+						return tonumber(InputBox.Text) or 0
+					else
+						return InputBox.Text
+					end
+				end
+			}
+			
+			-- Register to config system
+			library:RegisterConfigItem(Text, "InputBox", function()
+				return inputAPI:GetValue()
+			end, function(value)
+				inputAPI:SetValue(value)
+			end)
+			
+			return inputAPI
+		end
+		
 		function inside:AddColorPallete(Text,Color,Action)
 			Text = Text or 'Not defined'
 			Color = Color or Color3.fromRGB(255,255,255)
@@ -4464,16 +4663,11 @@ function library:AddWindow(text)
 			ColourDisplay.SliceCenter = Rect.new(100, 100, 100, 100)
 			ColourDisplay.SliceScale = 0.120
 			ColourDisplay.ImageColor3 = Color
-			SECTIONHOLDER.Size = UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 8) + UDim2.new(0,0,0,23)
-			_PARENT.Size = UDim2.new(_PARENT.Size.X.Scale, _PARENT.Size.X.Offset , 0 ,LIST.AbsoluteContentSize.Y + 15);
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 			AutoFit(SECTIONHOLDER,SECTION2UILIB)
 			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
 
-			OPENCLOSE.MouseButton1Click:Connect(function()
+			TrackedConnect(OPENCLOSE.MouseButton1Click, function()
 				OpenedColor(Text,ColourDisplay,Action,Color)
 			end)
 		end
@@ -4562,7 +4756,7 @@ function library:AddWindow(text)
 			h5.Parent = KeyButton
 
 			local ischanging = false;
-			game:GetService("UserInputService").InputBegan:connect(function(a, gp) 
+			TrackedConnect(game:GetService("UserInputService").InputBegan, function(a, gp) 
 				if not gp then 
 					if inputMatches(a, KeyCode) and ischanging == false then 
 						-- RequireEnabled kontrolü: eğer fonksiyon varsa ve false dönerse işlem yapma
@@ -4611,15 +4805,14 @@ function library:AddWindow(text)
 								end
 							end)
 						end
-						pcall(function()
-							Action(a.KeyCode ~= Enum.KeyCode.Unknown and a.KeyCode or a.UserInputType)
-						end)
+						local success, err = pcall(function() Action(a.KeyCode ~= Enum.KeyCode.Unknown and a.KeyCode or a.UserInputType) end)
+						if not success then warn("[Plague UI] Callback error:", err) end
 					end
 				end
 			end)
 			
 			-- InputEnded: Tuş bırakıldığında yeşil sönsün
-			game:GetService("UserInputService").InputEnded:connect(function(a, gp)
+			TrackedConnect(game:GetService("UserInputService").InputEnded, function(a, gp)
 				if not gp then
 					if inputMatches(a, KeyCode) and ischanging == false then
 						if kbEntry then
@@ -4629,14 +4822,14 @@ function library:AddWindow(text)
 				end
 			end)
 
-			KeyButton.MouseButton1Click:connect(function() 
+			TrackedConnect(KeyButton.MouseButton1Click, function() 
 				game.TweenService:Create(KeyButton, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
 					BackgroundColor3 = Color3.fromRGB(34, 34, 34)
 				}):Play()
 				KeyButton.Text = ". . ."
-				KeyButton:TweenSize(UDim2.new(0,getsize(KeyButton.Text),0,13), "InOut", "Quint", 0.2, true)
+				KeyButton:TweenSize(UDim2.new(0,getKeybindTextWidth(KeyButton.Text),0,13), "InOut", "Quint", 0.2, true)
 
-				local v1 = game:GetService('UserInputService').InputBegan:wait();
+				local v1 = game:GetService('UserInputService').InputBegan:Wait();
 				-- Klavye veya fare tuşu - ikisini de kabul et
 				local newKey
 				if v1.KeyCode ~= Enum.KeyCode.Unknown then
@@ -4659,24 +4852,22 @@ function library:AddWindow(text)
 					if library.KeybindNotifications then
 						pcall(function()
 							library:Notify({
-								Title = "Tuş Değiştirildi",
+								Title = "Key Changed",
 								Text = Text .. " -> [" .. displayName .. "]",
 								Duration = 1.8,
 								Color = Color3.fromRGB(91, 133, 197)
 							})
 						end)
 					end
-					wait(.2)
+					-- ✅ Action callback'i çağır (tuş değiştirildiğinde)
+					local success, err = pcall(function() Action(newKey) end)
+					if not success then warn("[Plague UI] Callback error:", err) end
+					task.wait(.2)
 					ischanging = false
 				end
 			end)
 
-			SECTIONHOLDER.Size = UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 8) + UDim2.new(0,0,0,23)
-			_PARENT.Size = UDim2.new(_PARENT.Size.X.Scale, _PARENT.Size.X.Offset , 0 ,LIST.AbsoluteContentSize.Y + 15);
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 
 			local kbHandle = {
 				KeybindItem = kbEntry,
@@ -4815,7 +5006,7 @@ function library:AddWindow(text)
 					TweenService:Create(OPTION , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(37,37,37)}):Play()	
 				end
 
-				OPTION.MouseButton1Click:Connect(function()
+				TrackedConnect(OPTION.MouseButton1Click, function()
 					for i,v in pairs(DRPDOWN:GetChildren()) do
 						if v:IsA("TextButton") and v ~= Toggle then
 							TweenService:Create(v , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(37,37,37)}):Play()	
@@ -4823,9 +5014,8 @@ function library:AddWindow(text)
 					end
 					s=TextLabel_3.Text
 					TweenService:Create(OPTION , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(28, 28, 28)}):Play()	
-					pcall(function()
-						Action(s)
-					end)
+					local success, err = pcall(function() Action(s) end)
+					if not success then warn("[Plague UI] Callback error:", err) end
 				end)
 
 				SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
@@ -4837,7 +5027,7 @@ function library:AddWindow(text)
 				AddRipple(OPTION,TextLabel_3)
 			end
 
-			Toggle.MouseButton1Click:Connect(function()
+			TrackedConnect(Toggle.MouseButton1Click, function()
 				if not K then
 					TweenService:Create(TextLabel_2 , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.Out), {Rotation = 180}):Play()	
 					DRPDOWN:TweenSize(UDim2.fromOffset(DRPDOWN.AbsoluteSize.X,  UIListLayout.AbsoluteContentSize.Y + 11),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true) 
@@ -4847,11 +5037,11 @@ function library:AddWindow(text)
 					TweenService:Create(TextLabel_2 , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.Out), {Rotation = 0}):Play()	
 					K = not K
 				end
-				wait(.3)
+				task.wait(.3)
 				SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true) 
-				wait(.2)
+				task.wait(.2)
 				_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true) 
-				wait(.2)
+				task.wait(.2)
 				UpdateMainSize(nil,true)
 
 			end)
@@ -4860,13 +5050,7 @@ function library:AddWindow(text)
 
 
 			AddRipple(Toggle,TextLabel_2,Color3.fromRGB(180, 180, 180))
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 		end
 		function inside:AddButton(Text,Callback)
 			Callback = Callback or function() end
@@ -4924,19 +5108,13 @@ function library:AddWindow(text)
 			UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(180, 180, 180))}
 			UIGradient.Parent = UIStroke
 
-			Interactive.MouseButton1Click:Connect(function()
-				spawn(function()
-					pcall(function()
-						Callback()
-					end)
+			TrackedConnect(Interactive.MouseButton1Click, function()
+				task.spawn(function()
+					local success, err = pcall(function() Callback() end)
+					if not success then warn("[Plague UI] Callback error:", err) end
 				end)
 			end)
-			SECTIONHOLDER.Size = UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 8) + UDim2.new(0,0,0,23)
-			_PARENT.Size = UDim2.new(_PARENT.Size.X.Scale, _PARENT.Size.X.Offset , 0 ,LIST.AbsoluteContentSize.Y + 15);
-			SECTIONHOLDER:TweenSize(UDim2.fromOffset(SECTIONHOLDER.AbsoluteSize.X,  SECTION2UILIB.AbsoluteContentSize.Y + 42),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			wait()
-			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
-			UpdateMainSize(nil,true)
+			ResizeSection()
 		end			
 		AutoFit(SECTIONHOLDER,SECTION2UILIB)
 		_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
@@ -4953,7 +5131,7 @@ end
 draggable(MAIN)
 
 -- to check fps (not mine function so yeah) --
-spawn(function()
+task.spawn(function()
 	local TimeFunction = RunService:IsRunning() and time or os.clock
 	local LastIteration, Start
 	local FrameUpdateTable = {}
@@ -4969,33 +5147,221 @@ spawn(function()
 	end
 
 	Start = TimeFunction()
-	RunService.Heartbeat:Connect(HeartbeatUpdate)
+	TrackedConnect(RunService.Heartbeat, HeartbeatUpdate)
 end)
 library.GUI = PCR_1 
 
 -- Custom Mouse Settings
-library.AutoEnableCustomMouse = false  -- Varsayılan: kapalı (UI açılınca otomatik başlatma)
+library.AutoEnableCustomMouse = false
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- CONFIG SYSTEM - Ayar Kaydetme/Yükleme
+-- ════════════════════════════════════════════════════════════════════════════
+
+library.ConfigData = {}
+library.ConfigFolder = "PlaguUIConfigs"
+
+function library:SaveConfig(configName)
+	configName = configName or "default"
+	
+	local config = {}
+	
+	-- Registry'den tüm değerleri topla
+	for key, item in pairs(self.ConfigRegistry) do
+		local success, value = pcall(function()
+			return item.Get()
+		end)
+		if success and value ~= nil then
+			config[key] = {
+				Type = item.Type,
+				Value = value
+			}
+		end
+	end
+	
+	-- JSON olarak kaydet
+	local success, encoded = pcall(function()
+		return game:GetService("HttpService"):JSONEncode(config)
+	end)
+	
+	if success then
+		if writefile then
+			local folderPath = library.ConfigFolder .. "/"
+			if not isfolder(library.ConfigFolder) then
+				makefolder(library.ConfigFolder)
+			end
+			writefile(folderPath .. configName .. ".json", encoded)
+			library:Notify({
+				Title = "Config Saved",
+				Text = configName .. ".json saved successfully!",
+				Duration = 2,
+				Type = "success"
+			})
+			return true
+		else
+			library:Notify({
+				Title = "Save Failed",
+				Text = "writefile not supported!",
+				Duration = 2,
+				Type = "error"
+			})
+		end
+	else
+		library:Notify({
+			Title = "Save Failed",
+			Text = "Failed to encode config!",
+			Duration = 2,
+			Type = "error"
+		})
+	end
+	
+	return false
+end
+
+function library:LoadConfig(configName)
+	configName = configName or "default"
+	
+	if not readfile or not isfile then
+		library:Notify({
+			Title = "Load Failed",
+			Text = "readfile not supported!",
+			Duration = 2,
+			Type = "error"
+		})
+		return false
+	end
+	
+	local filePath = library.ConfigFolder .. "/" .. configName .. ".json"
+	
+	if not isfile(filePath) then
+		library:Notify({
+			Title = "Load Failed",
+			Text = configName .. ".json not found!",
+			Duration = 2,
+			Type = "error"
+		})
+		return false
+	end
+	
+	local success, decoded = pcall(function()
+		local content = readfile(filePath)
+		return game:GetService("HttpService"):JSONDecode(content)
+	end)
+	
+	if not success then
+		library:Notify({
+			Title = "Load Failed",
+			Text = "Failed to decode config!",
+			Duration = 2,
+			Type = "error"
+		})
+		return false
+	end
+	
+	-- Registry kullanarak config'i uygula
+	local loaded = 0
+	for key, data in pairs(decoded) do
+		local item = self.ConfigRegistry[key]
+		if item and data.Value ~= nil then
+			pcall(function()
+				item.Set(data.Value)
+				loaded = loaded + 1
+			end)
+		end
+	end
+	
+	library:Notify({
+		Title = "Config Loaded",
+		Text = string.format("%s.json loaded (%d items)", configName, loaded),
+		Duration = 2,
+		Type = "success"
+	})
+	
+	return true
+end
+
+function library:GetConfigList()
+	if not listfiles or not isfolder then
+		return {}
+	end
+	
+	if not isfolder(library.ConfigFolder) then
+		return {}
+	end
+	
+	local configs = {}
+	local files = listfiles(library.ConfigFolder)
+	
+	for _, file in ipairs(files) do
+		local name = file:match("([^/\\]+)%.json$")
+		if name then
+			table.insert(configs, name)
+		end
+	end
+	
+	return configs
+end
+
+function library:DeleteConfig(configName)
+	configName = configName or "default"
+	
+	if not delfile or not isfile then
+		library:Notify({
+			Title = "Delete Failed",
+			Text = "delfile not supported!",
+			Duration = 2,
+			Type = "error"
+		})
+		return false
+	end
+	
+	local filePath = library.ConfigFolder .. "/" .. configName .. ".json"
+	
+	if not isfile(filePath) then
+		library:Notify({
+			Title = "Delete Failed",
+			Text = configName .. ".json not found!",
+			Duration = 2,
+			Type = "error"
+		})
+		return false
+	end
+	
+	delfile(filePath)
+	
+	library:Notify({
+		Title = "Config Deleted",
+		Text = configName .. ".json deleted!",
+		Duration = 2,
+		Type = "info"
+	})
+	
+	return true
+end
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- DESTROY UI - TÜM UI'I YOK ET (PANİC BUTONU)
 -- ════════════════════════════════════════════════════════════════════════════
 
 function library:DestroyUI()
-	-- Ana UI'yi yok et
+	-- ✅ 1. Tüm bağlantıları kes (InputBegan, RenderStepped, etc.)
+	ConnectionTracker:DisconnectAll()
+	
+	-- 2. Ana UI'yi yok et
 	pcall(function()
 		if PCR_1 and PCR_1.Parent then
 			PCR_1:Destroy()
 		end
 	end)
 	
-	-- Overlay UI'yi yok et (keybindlist, stafflist, watermark, bildirimler, warning)
+	-- 3. Overlay UI'yi yok et (keybindlist, stafflist, watermark, bildirimler, warning)
 	pcall(function()
 		if PCR_OVERLAY and PCR_OVERLAY.Parent then
 			PCR_OVERLAY:Destroy()
 		end
 	end)
 	
-	-- Custom mouse'u kapat
+	-- 4. Custom mouse'u kapat
 	pcall(function()
 		library:SetCustomMouse(false)
 		if library.CustomMouse.Frame then
@@ -5006,14 +5372,14 @@ function library:DestroyUI()
 		end
 	end)
 	
-	-- Tüm aktif bağlantıları kes
+	-- 5. Keybind list'i temizle
 	pcall(function()
 		if library.KeybindList and library.KeybindList.Destroy then
 			library.KeybindList:Destroy()
 		end
 	end)
 	
-	-- Hit logs'u temizle
+	-- 6. Hit logs'u temizle
 	pcall(function()
 		if HitLogModule and HitLogModule.Holder then
 			HitLogModule.Holder:Destroy()
@@ -5028,12 +5394,16 @@ function library:DestroyUI()
 		end
 	end)
 	
-	-- Roblox mouse'u geri göster
+	-- 7. Roblox mouse'u geri göster
 	pcall(function()
 		game:GetService("UserInputService").MouseIconEnabled = true
 	end)
 	
-	print("[Plague UI] UI destroyed successfully")
+	-- 8. Connection count'u kaydet ve disconnect et
+	local totalConnections = #ConnectionTracker.Connections
+	ConnectionTracker:DisconnectAll()
+	
+	print("[Plague UI] ✅ UI destroyed successfully - " .. totalConnections .. " connections tracked and disconnected")
 end
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -5066,7 +5436,7 @@ function library:SetCustomMouse(enabled)
 		
 		-- Mouse pozisyonunu takip et
 		if not library.CustomMouse.Connection then
-			library.CustomMouse.Connection = RunService.RenderStepped:Connect(function()
+			library.CustomMouse.Connection = TrackedConnect(RunService.RenderStepped, function()
 				if library.CustomMouse.Frame and library.CustomMouse.Enabled then
 					local mousePos = uis:GetMouseLocation()
 					library.CustomMouse.Frame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
