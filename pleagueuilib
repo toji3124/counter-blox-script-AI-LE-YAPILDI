@@ -4977,6 +4977,66 @@ library.GUI = PCR_1
 library.AutoEnableCustomMouse = false  -- Varsayılan: kapalı (UI açılınca otomatik başlatma)
 
 -- ════════════════════════════════════════════════════════════════════════════
+-- DESTROY UI - TÜM UI'I YOK ET (PANİC BUTONU)
+-- ════════════════════════════════════════════════════════════════════════════
+
+function library:DestroyUI()
+	-- Ana UI'yi yok et
+	pcall(function()
+		if PCR_1 and PCR_1.Parent then
+			PCR_1:Destroy()
+		end
+	end)
+	
+	-- Overlay UI'yi yok et (keybindlist, stafflist, watermark, bildirimler, warning)
+	pcall(function()
+		if PCR_OVERLAY and PCR_OVERLAY.Parent then
+			PCR_OVERLAY:Destroy()
+		end
+	end)
+	
+	-- Custom mouse'u kapat
+	pcall(function()
+		library:SetCustomMouse(false)
+		if library.CustomMouse.Frame then
+			library.CustomMouse.Frame:Destroy()
+		end
+		if library.CustomMouse.Connection then
+			library.CustomMouse.Connection:Disconnect()
+		end
+	end)
+	
+	-- Tüm aktif bağlantıları kes
+	pcall(function()
+		if library.KeybindList and library.KeybindList.Destroy then
+			library.KeybindList:Destroy()
+		end
+	end)
+	
+	-- Hit logs'u temizle
+	pcall(function()
+		if HitLogModule and HitLogModule.Holder then
+			HitLogModule.Holder:Destroy()
+		end
+		if HitLogModule and HitLogModule.ActiveLogs then
+			for _, log in ipairs(HitLogModule.ActiveLogs) do
+				if log and log.Frame then
+					log.Frame:Destroy()
+				end
+			end
+			HitLogModule.ActiveLogs = {}
+		end
+	end)
+	
+	-- Roblox mouse'u geri göster
+	pcall(function()
+		game:GetService("UserInputService").MouseIconEnabled = true
+	end)
+	
+	print("[Plague UI] UI destroyed successfully")
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
 -- CUSTOM MOUSE CURSOR SYSTEM
 -- ════════════════════════════════════════════════════════════════════════════
 
