@@ -3462,34 +3462,20 @@ function library:AddWindow(text)
 		end
 		TweenService:Create(TEMPLATE_TEXT , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(210, 210, 210)}):Play()	
 		
-		-- Animasyonlu tab geçişi: Slide animasyonu
+		-- Önce tüm sekmeleri gizle (anında)
 		for i,v in pairs(limit1:GetChildren()) do
 			if v:IsA('Frame') or v:IsA('ScrollingFrame') then
-				if v.Visible == true and v ~= HOLDER then
-					-- Eski sekmeyi sağa kaydır ve gizle
-					local oldTab = v
-					oldTab.Position = UDim2.new(0, 0, 0.019, 0)
-					TweenService:Create(oldTab, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-						Position = UDim2.new(-0.1, 0, 0.019, 0) -- Sola kaydır
-					}):Play()
-					
-					-- Animasyon bitince gizle
-					task.spawn(function()
-						task.wait(0.2)
-						oldTab.Visible = false
-						oldTab.Position = UDim2.new(0, 0, 0.019, 0) -- Reset
-					end)
-				end
+				v.Visible = false
 			end
 		end
 		
-		-- Yeni sekmeyi göster ve sağdan sola kaydır
-		HOLDER.Position = UDim2.new(0.1, 0, 0.019, 0) -- Başlangıç: sağda
+		-- Yeni sekmeyi animasyonlu göster
+		HOLDER.Position = UDim2.new(0.05, 0, 0.019, 0) -- Başlangıç: biraz sağda
 		HOLDER.Visible = true
 		
-		-- Slide animasyonu
-		TweenService:Create(HOLDER, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0, 0, 0.019, 0) -- Normal konuma kay
+		-- Slide animasyonu (sağdan sola)
+		TweenService:Create(HOLDER, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0.019, 0)
 		}):Play()
 	end)
 
