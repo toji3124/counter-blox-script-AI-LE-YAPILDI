@@ -3363,13 +3363,8 @@ function library:Init(name)
         if v:IsA('Frame') or v:IsA('ScrollingFrame') then
             if v.Name == name then
                 v.Visible = true
-                -- İlk açılışta da animasyon uygula
-                v.GroupTransparency = 1
-                v.Position = UDim2.new(0.05, 0, 0.019, 0)
-                TweenService:Create(v, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    GroupTransparency = 0,
-                    Position = UDim2.new(0, 0, 0.019, 0)
-                }):Play()
+                -- İlk açılışta basit fade-in (GroupTransparency yok, sadece göster)
+                v.Position = UDim2.new(0, 0, 0.019, 0)
             else
                 v.Visible = false
             end
@@ -3467,34 +3462,33 @@ function library:AddWindow(text)
 		end
 		TweenService:Create(TEMPLATE_TEXT , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(210, 210, 210)}):Play()	
 		
-		-- Animasyonlu tab geçişi: Fade-out eskiyi, Fade-in + Slide yeniyi
+		-- Animasyonlu tab geçişi: Slide animasyonu
 		for i,v in pairs(limit1:GetChildren()) do
 			if v:IsA('Frame') or v:IsA('ScrollingFrame') then
 				if v.Visible == true and v ~= HOLDER then
-					-- Eski sekmeyi fade-out yap
+					-- Eski sekmeyi sağa kaydır ve gizle
 					local oldTab = v
-					TweenService:Create(oldTab, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-						GroupTransparency = 1
+					oldTab.Position = UDim2.new(0, 0, 0.019, 0)
+					TweenService:Create(oldTab, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+						Position = UDim2.new(-0.1, 0, 0.019, 0) -- Sola kaydır
 					}):Play()
 					
-					-- Fade-out bitince gizle (async)
+					-- Animasyon bitince gizle
 					task.spawn(function()
 						task.wait(0.2)
 						oldTab.Visible = false
-						oldTab.GroupTransparency = 0 -- Reset for next show
+						oldTab.Position = UDim2.new(0, 0, 0.019, 0) -- Reset
 					end)
 				end
 			end
 		end
 		
-		-- Yeni sekmeyi göster ve animasyon uygula (hemen başlat)
+		-- Yeni sekmeyi göster ve sağdan sola kaydır
+		HOLDER.Position = UDim2.new(0.1, 0, 0.019, 0) -- Başlangıç: sağda
 		HOLDER.Visible = true
-		HOLDER.GroupTransparency = 1
-		HOLDER.Position = UDim2.new(0.05, 0, 0.019, 0) -- Başlangıç: biraz sağda
 		
-		-- Fade-in + Slide animasyonu
-		TweenService:Create(HOLDER, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			GroupTransparency = 0,
+		-- Slide animasyonu
+		TweenService:Create(HOLDER, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0, 0, 0.019, 0) -- Normal konuma kay
 		}):Play()
 	end)
