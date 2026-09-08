@@ -4839,11 +4839,11 @@ function library:AddWindow(text)
 							})
 						end)
 					end
-					-- ✅ Action callback'i çağır (tuş değiştirildiğinde)
-					local success, err = pcall(function() Action(newKey) end)
-					if not success then warn("[Plague UI] Callback error:", err) end
 					task.wait(.2)
 					ischanging = false
+					-- ✅ Action callback'i SONRA çağır (ischanging = false olduktan sonra)
+					local success, err = pcall(function() Action(newKey) end)
+					if not success then warn("[Plague UI] Callback error:", err) end
 				end
 			end)
 
