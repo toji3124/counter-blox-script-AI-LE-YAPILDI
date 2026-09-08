@@ -3363,8 +3363,6 @@ function library:Init(name)
         if v:IsA('Frame') or v:IsA('ScrollingFrame') then
             if v.Name == name then
                 v.Visible = true
-                -- İlk açılışta basit fade-in (GroupTransparency yok, sadece göster)
-                v.Position = UDim2.new(0, 0, 0.019, 0)
             else
                 v.Visible = false
             end
@@ -3461,62 +3459,12 @@ function library:AddWindow(text)
 			end
 		end
 		TweenService:Create(TEMPLATE_TEXT , TweenInfo.new(0.26, Enum.EasingStyle.Quad , Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(210, 210, 210)}):Play()	
-		
-		-- Önce tüm sekmeleri gizle
 		for i,v in pairs(limit1:GetChildren()) do
 			if v:IsA('Frame') or v:IsA('ScrollingFrame') then
 				v.Visible = false
 			end
 		end
-		
-		-- Yeni sekmeyi göster
 		HOLDER.Visible = true
-		
-		-- Her section'ı sırayla sağdan yükle (cascade efekt)
-		local sections = {}
-		for _, child in pairs(HOLDER:GetChildren()) do
-			if child:IsA('Frame') and (child.Name == "_LEFT" or child.Name == "_RIGHT") then
-				for _, section in pairs(child:GetChildren()) do
-					if section:IsA('Frame') and section.Name:find("Template") then
-						table.insert(sections, section)
-					end
-				end
-			end
-		end
-		
-		-- Her section'ı sırayla animasyonla
-		for index, section in ipairs(sections) do
-			local delay = (index - 1) * 0.08 -- Her biri 0.08 saniye arayla
-			
-			task.spawn(function()
-				-- Başlangıç pozisyonu: sağda ve görünmez
-				section.Position = section.Position + UDim2.new(0.3, 0, 0, 0)
-				section.BackgroundTransparency = 1
-				
-				-- Tüm child elementleri gizle
-				for _, child in pairs(section:GetDescendants()) do
-					if child:IsA('GuiObject') then
-						child.Visible = false
-					end
-				end
-				
-				task.wait(delay)
-				
-				-- Sağdan sola kayma + fade-in
-				TweenService:Create(section, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Position = section.Position - UDim2.new(0.3, 0, 0, 0),
-					BackgroundTransparency = 0
-				}):Play()
-				
-				-- Child elementleri göster
-				task.wait(0.1)
-				for _, child in pairs(section:GetDescendants()) do
-					if child:IsA('GuiObject') then
-						child.Visible = true
-					end
-				end
-			end)
-		end
 	end)
 
 	fghk.Name = "fghk"
