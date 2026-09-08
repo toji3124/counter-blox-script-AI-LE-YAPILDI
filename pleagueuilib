@@ -952,7 +952,7 @@ function library:AddWatermark(Text, Options)
 		glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		
 		-- Glow animasyonu
-		task.task.spawn(function()
+		task.spawn(function()
 			while obj1 and obj1.Parent do
 				for i = 0, 1, 0.05 do
 					if not obj1 or not obj1.Parent then break end
@@ -1368,7 +1368,7 @@ function library:AddList(Options)
 		glowStroke.Transparency = 0.5
 		glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		
-		task.task.spawn(function()
+		task.spawn(function()
 			while mainFrame and mainFrame.Parent do
 				for i = 0, 1, 0.05 do
 					if not mainFrame or not mainFrame.Parent then break end
@@ -2684,7 +2684,7 @@ function library:AddKeybindList(options)
 		KB_GlowStroke.Transparency = 0.5
 		KB_GlowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		
-		task.task.spawn(function()
+		task.spawn(function()
 			while KB_Main and KB_Main.Parent do
 				for i = 0, 1, 0.05 do
 					if not KB_Main or not KB_Main.Parent then break end
