@@ -1,6 +1,13 @@
 -- https://raw.githubusercontent.com/oShyyyyy/Plaguecheat.cc-Roblox-Ui-library/main/Source.lua --
 
-
+-- Task fallback (bazı executor'larda task global'i eksik olabilir)
+local task = task or setmetatable({}, {
+	__index = function(_, k)
+		if k == "spawn" then return function(f) coroutine.wrap(f)() end end
+		if k == "wait" then return wait end
+		if k == "delay" then return delay end
+	end
+})
 
 local PCR_1 = Instance.new("ScreenGui")
 local PCR_OVERLAY = Instance.new("ScreenGui")  -- Keybindlist ve List için ayrı ScreenGui
