@@ -726,6 +726,7 @@ repeat task.wait() until game.Players.LocalPlayer
 
 local library = {};
 library.sections = {};
+library.allSections = {};
 local totalSections = 0;
 
 function library:ChangeWeb(site)
@@ -3692,6 +3693,7 @@ function library:AddWindow(text)
 			Resize = ResizeSection
 		}
 		table.insert(tabSections, sectionEntry)
+		table.insert(library.allSections, sectionEntry)
 
 		function inside:AddTextBox(Text,placeholder, CTOF, Type, Action)
 
@@ -5730,6 +5732,223 @@ function library:SetCustomMouseSize(size)
 	if library.CustomMouse.Frame then
 		library.CustomMouse.Frame.Size = UDim2.new(0, size, 0, size)
 	end
+end
+function library:InitSearchTab()
+	local SearchBoxTab = Instance.new("TextBox")
+	SearchBoxTab.Name = "SearchBoxTab"
+	SearchBoxTab.Parent = Upper
+	SearchBoxTab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	SearchBoxTab.BackgroundTransparency = 1.000
+	SearchBoxTab.BorderSizePixel = 0
+	SearchBoxTab.Size = UDim2.new(0, 70, 0, 13)
+	SearchBoxTab.Position = UDim2.new(0, 0, 0.281, 0)
+	SearchBoxTab.ZIndex = 3
+	SearchBoxTab.Font = Enum.Font.SourceSansSemibold
+	SearchBoxTab.PlaceholderText = "Search..."
+	SearchBoxTab.PlaceholderColor3 = Color3.fromRGB(138, 138, 138)
+	SearchBoxTab.Text = ""
+	SearchBoxTab.TextColor3 = Color3.fromRGB(210, 210, 210)
+	SearchBoxTab.TextSize = 16.000
+	SearchBoxTab.TextXAlignment = Enum.TextXAlignment.Center
+	
+	local SearchHolder = Instance.new("ScrollingFrame")
+	SearchHolder.Name = "SearchHolder"
+	SearchHolder.Parent = limit1
+	SearchHolder.Active = true
+	SearchHolder.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	SearchHolder.BackgroundTransparency = 1.000
+	SearchHolder.BorderSizePixel = 0
+	SearchHolder.ClipsDescendants = false
+	SearchHolder.Position = UDim2.new(0,0,0.019,0)
+	SearchHolder.Visible = false
+	SearchHolder.Size = UDim2.new(0, 588, 0, 359)
+	SearchHolder.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+	SearchHolder.CanvasSize = UDim2.new(0, 0, 0, 0)
+	SearchHolder.ScrollBarThickness = 5
+	SearchHolder.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+
+	local SearchLeft = Instance.new("Frame")
+	SearchLeft.Name = "_LEFT"
+	SearchLeft.Parent = SearchHolder
+	SearchLeft.AnchorPoint = Vector2.new(0.5, 0.5)
+	SearchLeft.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	SearchLeft.BackgroundTransparency = 1.000
+	SearchLeft.BorderSizePixel = 0
+	SearchLeft.Position = UDim2.new(0.249, 0, 0.508, 0)
+	SearchLeft.Size = UDim2.new(0.5, 0, 0.972, 0)
+	SearchLeft.ZIndex = 3
+	SearchLeft.ClipsDescendants = true
+
+	local SearchLUIL = Instance.new("UIListLayout")
+	SearchLUIL.Parent = SearchLeft
+	SearchLUIL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	SearchLUIL.SortOrder = Enum.SortOrder.LayoutOrder
+	SearchLUIL.Padding = UDim.new(0, 5)
+
+	local SearchRight = Instance.new("Frame")
+	SearchRight.Name = "_RIGHT"
+	SearchRight.Parent = SearchHolder
+	SearchRight.AnchorPoint = Vector2.new(0.5, 0.5)   
+	SearchRight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	SearchRight.BackgroundTransparency = 1.000
+	SearchRight.BorderSizePixel = 0
+	SearchRight.Position = UDim2.new(0.749, 0, 0.508, 0)
+	SearchRight.Size = UDim2.new(0.5, 0, 0.972, 0)
+	SearchRight.ZIndex = 3
+	SearchRight.ClipsDescendants = true
+
+	local SearchRUIL = Instance.new("UIListLayout")
+	SearchRUIL.Parent = SearchRight
+	SearchRUIL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	SearchRUIL.SortOrder = Enum.SortOrder.LayoutOrder
+	SearchRUIL.Padding = UDim.new(0, 5)
+	
+	local function UpdateSearchSize()
+		local maxH = math.max(SearchLUIL.AbsoluteContentSize.Y, SearchRUIL.AbsoluteContentSize.Y)
+		SearchHolder.CanvasSize = UDim2.new(0, 0, 0, maxH + 20)
+		SearchLeft.Size = UDim2.new(SearchLeft.Size.X.Scale, SearchLeft.Size.X.Offset, 0, SearchLUIL.AbsoluteContentSize.Y + 15)
+		SearchRight.Size = UDim2.new(SearchRight.Size.X.Scale, SearchRight.Size.X.Offset, 0, SearchRUIL.AbsoluteContentSize.Y + 15)
+	end
+	
+	local isSearching = false
+
+	local function EndSearch()
+		if not isSearching then return end
+		isSearching = false
+		SearchHolder.Visible = false
+		
+		if library.allSections then
+			for _, entry in ipairs(library.allSections) do
+				entry.Holder.Parent = entry.Column
+				entry.Holder.Visible = true
+				for _, child in ipairs(entry.ItemsHolder:GetChildren()) do
+					if not child:IsA("UIListLayout") then
+						child.Visible = true
+					end
+				end
+				if entry.Resize then entry.Resize() end
+			end
+		end
+	end
+
+	local function OnFocus()
+		for i,v in pairs(Upper:GetChildren()) do
+			if v:IsA('TextButton') then
+				TweenService:Create(v, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(138, 138, 138)}):Play()	
+			end
+		end
+		TweenService:Create(SearchBoxTab, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(210, 210, 210)}):Play()	
+	end
+
+	if SearchBoxTab.Focused then
+		SearchBoxTab.Focused:Connect(OnFocus)
+	else
+		SearchBoxTab.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				OnFocus()
+			end
+		end)
+	end
+
+	SearchBoxTab:GetPropertyChangedSignal("Text"):Connect(function()
+		local query = SearchBoxTab.Text
+		local trimmed = query:match("^%s*(.-)%s*$") or query
+		local isEmpty = (trimmed == "")
+		local compareQuery = trimmed:lower()
+
+		if isEmpty then
+			EndSearch()
+			return
+		end
+
+		isSearching = true
+		for i,v in pairs(limit1:GetChildren()) do
+			if v:IsA('Frame') or v:IsA('ScrollingFrame') then
+				v.Visible = false
+			end
+		end
+		SearchHolder.Visible = true
+		
+		local leftCount = 0
+		local rightCount = 0
+
+		if library.allSections then
+			for _, entry in ipairs(library.allSections) do
+				local sectionMatches = false
+				
+				for _, child in ipairs(entry.ItemsHolder:GetChildren()) do
+					if child:IsA("UIListLayout") then continue end
+					local itemMatches = false
+					for _, desc in ipairs(child:GetDescendants()) do
+						if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+							local labelText = desc.Text:lower()
+							if labelText:find(compareQuery, 1, true) then
+								itemMatches = true
+								break
+							end
+						end
+					end
+					
+					if not itemMatches then
+						local childName = child.Name:lower()
+						if childName:find(compareQuery, 1, true) then
+							itemMatches = true
+						end
+					end
+					
+					child.Visible = itemMatches
+					if itemMatches then
+						sectionMatches = true
+					end
+				end
+				
+				local titleText = entry.Title:lower()
+				if titleText:find(compareQuery, 1, true) then
+					sectionMatches = true
+					for _, child in ipairs(entry.ItemsHolder:GetChildren()) do
+						if not child:IsA("UIListLayout") then
+							child.Visible = true
+						end
+					end
+				end
+				
+				entry.Holder.Visible = sectionMatches
+				
+				if sectionMatches then
+					if leftCount <= rightCount then
+						entry.Holder.Parent = SearchLeft
+						leftCount = leftCount + 1
+					else
+						entry.Holder.Parent = SearchRight
+						rightCount = rightCount + 1
+					end
+					if entry.Resize then entry.Resize() end
+				else
+					entry.Holder.Parent = nil
+				end
+			end
+		end
+		
+		task.wait()
+		UpdateSearchSize()
+	end)
+	
+	local function AttachTab(btn)
+		if btn:IsA("TextButton") then
+			btn.MouseButton1Click:Connect(function()
+				if isSearching then
+					SearchBoxTab.Text = ""
+					TweenService:Create(SearchBoxTab, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(138, 138, 138)}):Play()
+				end
+			end)
+		end
+	end
+
+	for _, v in pairs(Upper:GetChildren()) do
+		AttachTab(v)
+	end
+	
+	Upper.ChildAdded:Connect(AttachTab)
 end
 
 return library
