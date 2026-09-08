@@ -4452,6 +4452,170 @@ function library:AddWindow(text)
 
 
 		end
+
+		-- ────────────────────────────────────────────────────────────────
+		-- AddSearchBox: Section içi arama/filtreleme kutusu (OPSİYONEL)
+		-- Kullanım: section:AddSearchBox(Options)
+		--   Options.Placeholder → string  (varsayılan: "Search...")
+		--   Options.CaseSensitive → bool  (varsayılan: false)
+		-- Döndürür: api:Clear(), api:SetText(str), api:GetText()
+		-- ────────────────────────────────────────────────────────────────
+		function inside:AddSearchBox(Options)
+			Options = Options or {}
+			local Placeholder = Options.Placeholder or "Search..."
+			local CaseSensitive = Options.CaseSensitive == true
+
+			--[SearchBox Ana Çerçeve]--
+			local SearchFrame = Instance.new("Frame")
+			SearchFrame.Name = "SearchBoxFrame"
+			SearchFrame.BackgroundTransparency = 1
+			SearchFrame.BorderSizePixel = 0
+			SearchFrame.Size = UDim2.new(0, 248, 0, 26)
+			SearchFrame.ZIndex = 20
+			SearchFrame.Parent = HOLDER_2
+
+			--[Arka Plan]--
+			local SearchBG = Instance.new("Frame")
+			SearchBG.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+			SearchBG.BorderSizePixel = 0
+			SearchBG.Position = UDim2.new(0, 0, 0, 4)
+			SearchBG.Size = UDim2.new(1, 0, 0, 18)
+			SearchBG.ZIndex = 21
+			SearchBG.Parent = SearchFrame
+
+			local SearchCorner = Instance.new("UICorner")
+			SearchCorner.CornerRadius = UDim.new(0, 4)
+			SearchCorner.Parent = SearchBG
+
+			local SearchStroke = Instance.new("UIStroke")
+			SearchStroke.Color = Color3.fromRGB(52, 52, 52)
+			SearchStroke.Thickness = 1
+			SearchStroke.Transparency = 0
+			SearchStroke.Parent = SearchBG
+
+			--[TextBox]--
+			local SearchBox = Instance.new("TextBox")
+			SearchBox.BackgroundTransparency = 1
+			SearchBox.BorderSizePixel = 0
+			SearchBox.Position = UDim2.new(0, 5, 0, 0)
+			SearchBox.Size = UDim2.new(1, -22, 1, 0)
+			SearchBox.ZIndex = 23
+			SearchBox.ClearTextOnFocus = false
+			SearchBox.Font = Enum.Font.SourceSans
+			SearchBox.PlaceholderText = Placeholder
+			SearchBox.PlaceholderColor3 = Color3.fromRGB(80, 80, 80)
+			SearchBox.Text = ""
+			SearchBox.TextColor3 = Color3.fromRGB(197, 197, 197)
+			SearchBox.TextSize = 12
+			SearchBox.TextXAlignment = Enum.TextXAlignment.Left
+			SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
+			SearchBox.Parent = SearchBG
+
+			--[Temizle (X) Butonu]--
+			local ClearBtn = Instance.new("TextButton")
+			ClearBtn.BackgroundTransparency = 1
+			ClearBtn.BorderSizePixel = 0
+			ClearBtn.Position = UDim2.new(1, -16, 0, 0)
+			ClearBtn.Size = UDim2.new(0, 14, 1, 0)
+			ClearBtn.ZIndex = 24
+			ClearBtn.Font = Enum.Font.SourceSansBold
+			ClearBtn.Text = "✕"
+			ClearBtn.TextColor3 = Color3.fromRGB(80, 80, 80)
+			ClearBtn.TextSize = 11
+			ClearBtn.Visible = false
+			ClearBtn.Parent = SearchBG
+
+			-- Focus efektleri
+			TrackedConnect(SearchBox.Focused, function()
+				TweenService:Create(SearchStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Color = Color3.fromRGB(91, 133, 197),
+					Transparency = 0
+				}):Play()
+			end)
+			TrackedConnect(SearchBox.FocusLost, function()
+				TweenService:Create(SearchStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Color = Color3.fromRGB(52, 52, 52),
+					Transparency = 0
+				}):Play()
+			end)
+
+			-- Filtreleme fonksiyonu
+			local function applyFilter(query)
+				local trimmed = query:match("^%s*(.-)%s*$") or query
+				local isEmpty = (trimmed == "")
+
+				ClearBtn.Visible = not isEmpty
+
+				-- HOLDER_2 içindeki tüm elementleri tara
+				for _, child in ipairs(HOLDER_2:GetChildren()) do
+					-- SearchBoxFrame'i ve SECTION2UILIB'i atlama
+					if child == SearchFrame then continue end
+					if child:IsA("UIListLayout") then continue end
+
+					-- Her elementin alt TextLabel'larından metin al
+					local matchFound = isEmpty -- boşsa hepsini göster
+
+					if not isEmpty then
+						local compareQuery = CaseSensitive and trimmed or trimmed:lower()
+						-- Çocuk eleman içindeki TextLabel metinlerini tara
+						for _, desc in ipairs(child:GetDescendants()) do
+							if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+								local labelText = CaseSensitive and desc.Text or desc.Text:lower()
+								if labelText:find(compareQuery, 1, true) then
+									matchFound = true
+									break
+								end
+							end
+						end
+						-- Çocuk elemanın kendi Name'ini de kontrol et
+						if not matchFound then
+							local childName = CaseSensitive and child.Name or child.Name:lower()
+							if childName:find(compareQuery, 1, true) then
+								matchFound = true
+							end
+						end
+					end
+
+					-- Görünürlük animasyonlu
+					if matchFound then
+						child.Visible = true
+					else
+						child.Visible = false
+					end
+				end
+
+				ResizeSection()
+			end
+
+			-- Temizle butonu
+			TrackedConnect(ClearBtn.MouseButton1Click, function()
+				SearchBox.Text = ""
+				applyFilter("")
+			end)
+
+			-- Text değişince filtrele
+			TrackedConnect(SearchBox:GetPropertyChangedSignal("Text"), function()
+				applyFilter(SearchBox.Text)
+			end)
+
+			ResizeSection()
+
+			-- API
+			local searchAPI = {}
+			function searchAPI:Clear()
+				SearchBox.Text = ""
+				applyFilter("")
+			end
+			function searchAPI:SetText(str)
+				SearchBox.Text = tostring(str or "")
+				applyFilter(SearchBox.Text)
+			end
+			function searchAPI:GetText()
+				return SearchBox.Text
+			end
+
+			return searchAPI
+		end
 		
 		function inside:AddInputBox(Text, DefaultValue, Callback, Options)
 			Text = Text or 'Not Defined'
