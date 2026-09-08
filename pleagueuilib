@@ -3551,6 +3551,7 @@ function library:AddWindow(text)
 		end
 	end
 	local section_info = {};
+	local tabSections = {};
 	function sec:UpdateSize()
 		UpdateMainSize()
 	end
@@ -3680,6 +3681,17 @@ function library:AddWindow(text)
 			_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X, LIST.AbsoluteContentSize.Y + 15), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true)
 			UpdateMainSize(nil, true)
 		end
+
+		local sectionEntry = {
+			Holder = SECTIONHOLDER,
+			ItemsHolder = HOLDER_2,
+			Title = Texto,
+			ListLayout = SECTION2UILIB,
+			Column = _PARENT,
+			ColList = LIST,
+			Resize = ResizeSection
+		}
+		table.insert(tabSections, sectionEntry)
 
 		function inside:AddTextBox(Text,placeholder, CTOF, Type, Action)
 
@@ -4454,18 +4466,24 @@ function library:AddWindow(text)
 		end
 
 		-- ────────────────────────────────────────────────────────────────
-		-- AddSearchBox: Section içi arama/filtreleme kutusu (OPSİYONEL)
-		-- Kullanım: section:AddSearchBox(Options)
-		--   Options.Placeholder → string  (varsayılan: "Search...")
-		--   Options.CaseSensitive → bool  (varsayılan: false)
-		-- Döndürür: api:Clear(), api:SetText(str), api:GetText()
+		-- AddSearchBox: Search and filter elements across sections (OPTIONAL)
+		-- Usage:
+		--   section:AddSearchBox(Options)
+		--   tab:AddSearchBox(side, Options)
+		-- Options:
+		--   Options.Placeholder   → string (default: "Search...")
+		--   Options.CaseSensitive → bool   (default: false)
+		--   Options.AllSections   → bool   (default: true, searches all sections in tab)
+		-- Returns:
+		--   api:Clear(), api:SetText(str), api:GetText()
 		-- ────────────────────────────────────────────────────────────────
 		function inside:AddSearchBox(Options)
 			Options = Options or {}
 			local Placeholder = Options.Placeholder or "Search..."
 			local CaseSensitive = Options.CaseSensitive == true
+			local SearchAllSections = Options.AllSections ~= false
 
-			--[SearchBox Ana Çerçeve]--
+			--[SearchBox Main Frame]--
 			local SearchFrame = Instance.new("Frame")
 			SearchFrame.Name = "SearchBoxFrame"
 			SearchFrame.BackgroundTransparency = 1
@@ -4474,7 +4492,7 @@ function library:AddWindow(text)
 			SearchFrame.ZIndex = 20
 			SearchFrame.Parent = HOLDER_2
 
-			--[Arka Plan]--
+			--[Background Frame]--
 			local SearchBG = Instance.new("Frame")
 			SearchBG.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 			SearchBG.BorderSizePixel = 0
@@ -4493,7 +4511,7 @@ function library:AddWindow(text)
 			SearchStroke.Transparency = 0
 			SearchStroke.Parent = SearchBG
 
-			--[TextBox]--
+			--[TextBox Input]--
 			local SearchBox = Instance.new("TextBox")
 			SearchBox.BackgroundTransparency = 1
 			SearchBox.BorderSizePixel = 0
@@ -4511,7 +4529,7 @@ function library:AddWindow(text)
 			SearchBox.TextTruncate = Enum.TextTruncate.AtEnd
 			SearchBox.Parent = SearchBG
 
-			--[Temizle (X) Butonu]--
+			--[Clear (X) Button]--
 			local ClearBtn = Instance.new("TextButton")
 			ClearBtn.BackgroundTransparency = 1
 			ClearBtn.BorderSizePixel = 0
@@ -4525,7 +4543,7 @@ function library:AddWindow(text)
 			ClearBtn.Visible = false
 			ClearBtn.Parent = SearchBG
 
-			-- Focus efektleri
+			-- Focus Effects
 			TrackedConnect(SearchBox.Focused, function()
 				TweenService:Create(SearchStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					Color = Color3.fromRGB(91, 133, 197),
@@ -4539,61 +4557,131 @@ function library:AddWindow(text)
 				}):Play()
 			end)
 
-			-- Filtreleme fonksiyonu
+			-- Helper to calculate content height of visible items
+			local function calcVisibleHeight(holder, listLayout)
+				local totalH = 0
+				local count = 0
+				for _, child in ipairs(holder:GetChildren()) do
+					if not child:IsA("UIListLayout") and child.Visible then
+						local h = (child.Size.Y.Offset > 0) and child.Size.Y.Offset or child.AbsoluteSize.Y
+						if h <= 0 then h = 24 end
+						totalH = totalH + h
+						count = count + 1
+					end
+				end
+				if count > 1 and listLayout then
+					totalH = totalH + ((count - 1) * listLayout.Padding.Offset)
+				end
+				return totalH
+			end
+
+			-- Filter Function
 			local function applyFilter(query)
 				local trimmed = query:match("^%s*(.-)%s*$") or query
 				local isEmpty = (trimmed == "")
+				local compareQuery = CaseSensitive and trimmed or trimmed:lower()
 
 				ClearBtn.Visible = not isEmpty
 
-				-- HOLDER_2 içindeki tüm elementleri tara
-				for _, child in ipairs(HOLDER_2:GetChildren()) do
-					-- SearchBoxFrame'i ve SECTION2UILIB'i atlama
-					if child == SearchFrame then continue end
-					if child:IsA("UIListLayout") then continue end
+				local targetSections = SearchAllSections and tabSections or {{
+					Holder = SECTIONHOLDER,
+					ItemsHolder = HOLDER_2,
+					Title = Texto,
+					ListLayout = SECTION2UILIB,
+					Column = _PARENT,
+					ColList = LIST,
+					Resize = ResizeSection
+				}}
 
-					-- Her elementin alt TextLabel'larından metin al
-					local matchFound = isEmpty -- boşsa hepsini göster
+				for _, entry in ipairs(targetSections) do
+					local isOwnerSection = (entry.ItemsHolder == HOLDER_2)
+					local sectionMatches = false
 
-					if not isEmpty then
-						local compareQuery = CaseSensitive and trimmed or trimmed:lower()
-						-- Çocuk eleman içindeki TextLabel metinlerini tara
-						for _, desc in ipairs(child:GetDescendants()) do
-							if desc:IsA("TextLabel") or desc:IsA("TextButton") then
-								local labelText = CaseSensitive and desc.Text or desc.Text:lower()
-								if labelText:find(compareQuery, 1, true) then
-									matchFound = true
-									break
+					if isEmpty then
+						entry.Holder.Visible = true
+						for _, child in ipairs(entry.ItemsHolder:GetChildren()) do
+							if not child:IsA("UIListLayout") then
+								child.Visible = true
+							end
+						end
+						local h = calcVisibleHeight(entry.ItemsHolder, entry.ListLayout)
+						entry.Holder.Size = UDim2.fromOffset(entry.Holder.AbsoluteSize.X, h + 42)
+					else
+						-- Check each element inside this section
+						for _, child in ipairs(entry.ItemsHolder:GetChildren()) do
+							if child:IsA("UIListLayout") then continue end
+							if child == SearchFrame then
+								child.Visible = true
+								continue
+							end
+
+							local itemMatches = false
+
+							-- Check text in descendants (labels, buttons, etc.)
+							for _, desc in ipairs(child:GetDescendants()) do
+								if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+									local labelText = CaseSensitive and desc.Text or desc.Text:lower()
+									if labelText:find(compareQuery, 1, true) then
+										itemMatches = true
+										break
+									end
+								end
+							end
+
+							-- Check child element name
+							if not itemMatches then
+								local childName = CaseSensitive and child.Name or child.Name:lower()
+								if childName:find(compareQuery, 1, true) then
+									itemMatches = true
+								end
+							end
+
+							child.Visible = itemMatches
+							if itemMatches then
+								sectionMatches = true
+							end
+						end
+
+						-- Also check section title
+						local titleText = CaseSensitive and entry.Title or entry.Title:lower()
+						if titleText:find(compareQuery, 1, true) then
+							sectionMatches = true
+							for _, child in ipairs(entry.ItemsHolder:GetChildren()) do
+								if not child:IsA("UIListLayout") then
+									child.Visible = true
 								end
 							end
 						end
-						-- Çocuk elemanın kendi Name'ini de kontrol et
-						if not matchFound then
-							local childName = CaseSensitive and child.Name or child.Name:lower()
-							if childName:find(compareQuery, 1, true) then
-								matchFound = true
-							end
-						end
-					end
 
-					-- Görünürlük animasyonlu
-					if matchFound then
-						child.Visible = true
-					else
-						child.Visible = false
+						-- Owner section holding the search box must remain visible
+						if isOwnerSection then
+							entry.Holder.Visible = true
+						else
+							entry.Holder.Visible = sectionMatches
+						end
+
+						if entry.Holder.Visible then
+							local h = calcVisibleHeight(entry.ItemsHolder, entry.ListLayout)
+							entry.Holder.Size = UDim2.fromOffset(entry.Holder.AbsoluteSize.X, h + 42)
+						end
 					end
 				end
 
-				ResizeSection()
+				-- Refresh column containers and main canvas
+				task.defer(function()
+					_LEFT.Size = UDim2.new(_LEFT.Size.X.Scale, _LEFT.Size.X.Offset, 0, LUIL.AbsoluteContentSize.Y + 15)
+					_RIGHT.Size = UDim2.new(_RIGHT.Size.X.Scale, _RIGHT.Size.X.Offset, 0, RUIL.AbsoluteContentSize.Y + 15)
+					UpdateMainSize(nil, false)
+				end)
 			end
 
-			-- Temizle butonu
+			-- Clear Button Click
 			TrackedConnect(ClearBtn.MouseButton1Click, function()
 				SearchBox.Text = ""
 				applyFilter("")
 			end)
 
-			-- Text değişince filtrele
+			-- Text Changed
 			TrackedConnect(SearchBox:GetPropertyChangedSignal("Text"), function()
 				applyFilter(SearchBox.Text)
 			end)
@@ -5264,6 +5352,17 @@ function library:AddWindow(text)
 		_PARENT:TweenSize(UDim2.fromOffset(_PARENT.AbsoluteSize.X,  LIST.AbsoluteContentSize.Y + 15),Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0, true) 
 
 		return inside
+	end
+
+	function sec:AddSearchBox(side, Options)
+		if type(side) == "table" then
+			Options = side
+			side = 1
+		end
+		side = side or 1
+		Options = Options or {}
+		local searchSection = sec:AddSection("Search", side)
+		return searchSection:AddSearchBox(Options)
 	end
 
 	return sec
